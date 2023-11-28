@@ -1,0 +1,39 @@
+{
+    "schemaVersion": "1.3",
+    "acapPackageConf": {
+        "setup": {
+            "friendlyName": "OPC UA Color Checker",
+            "appName": "opcuacolorchecker",
+            "vendor": "Axis Communications AB",
+            "embeddedSdkVersion": "3.0",
+            "user": {
+                "username": "sdk",
+                "group": "sdk"
+            },
+            "vendorUrl": "https://www.axis.com/",
+            "runMode": "respawn",
+            "version": "1.0.0"
+        },
+        "configuration": {
+            "settingPage": "settings.html",
+            "httpConfig": [
+                {"type": "transferCgi", "name": "getstatus.cgi", "access": "viewer"},
+                {"type": "transferCgi", "name": "pickcurrent.cgi", "access": "admin"}
+            ],
+            "paramConfig": [
+                {"name": "CenterX", "type": "int:min=0,max=1023", "default": "100"},
+                {"name": "CenterY", "type": "int:min=0,max=575", "default": "170"},
+                {"name": "ColorB", "type": "double:min=0,max=255", "default": "50"},
+                {"name": "ColorG", "type": "double:min=0,max=255", "default": "50"},
+                {"name": "ColorR", "type": "double:min=0,max=255", "default": "50"},
+                {"name": "Height", "type": "int:min=0,max=1080", "default": "480"},
+                {"name": "MarkerHeight", "type": "int:min=1", "default": "25"},
+                {"name": "MarkerShape", "type": "enum:0|Ellipse, 1|Rectangle", "default": "0"},
+                {"name": "MarkerWidth", "type": "int:min=1", "default": "25"},
+                {"name": "Port", "type": "int:min=1024,max=65535", "default": "4840"},
+                {"name": "Tolerance", "type": "int:min=0,max=255", "default": "35"},
+                {"name": "Width", "type": "int:min=0,max=1920", "default": "640"}
+            ]
+        }
+    }
+}
