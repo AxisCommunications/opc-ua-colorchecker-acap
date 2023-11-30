@@ -21,13 +21,8 @@ which is possible since it is available as a container. Using
 docker run --rm \
   -v "$PWD":/tmp/lint \
   -e RUN_LOCAL=true \
-  -e LINTER_RULES_PATH=/ \
-  -e VALIDATE_CLANG_FORMAT=true \
-  -e VALIDATE_DOCKERFILE_HADOLINT=true \
-  -e VALIDATE_JSON=true \
-  -e VALIDATE_MARKDOWN=true \
-  -e VALIDATE_YAML=true \
-  github/super-linter:slim-v4
+  --env-file .github/super-linter.env \
+  ghcr.io/super-linter/super-linter:slim-v5
 ```
 
 ## Run super-linter interactively
@@ -39,8 +34,9 @@ with Docker:
 docker run -it --rm \
   -v "$PWD":/tmp/lint \
   -w /tmp/lint \
+  --env-file .github/super-linter.env \
   --entrypoint /bin/bash \
-  github/super-linter:slim-v4
+  ghcr.io/super-linter/super-linter:slim-v5
 ```
 
 Then from the container terminal, the following commands can lint the the code

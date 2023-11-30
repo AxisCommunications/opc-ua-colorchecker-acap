@@ -13,17 +13,11 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Environment
+        run: cat .github/super-linter.env >> "$GITHUB_ENV"
+
       - name: Lint Code Base
         uses: super-linter/super-linter/slim@v5
         env:
-          LINTER_RULES_PATH: /
-          VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          IGNORE_GITIGNORED_FILES: true
-          VALIDATE_CLANG_FORMAT: true
-          VALIDATE_DOCKERFILE_HADOLINT: true
-          VALIDATE_JSON: true
-          VALIDATE_MARKDOWN: true
-          VALIDATE_YAML: true
