@@ -1,7 +1,7 @@
 # Lint of code base
 
 This repo uses the
-[super-linter](https://github.com/github/super-linter)
+[super-linter](https://github.com/super-linter/super-linter)
 to check the code base syntax and format on different file types.
 
 ## Linters in GitHub Action
