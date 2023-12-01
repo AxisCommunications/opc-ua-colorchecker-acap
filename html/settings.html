@@ -1,0 +1,100 @@
+<!DOCTYPE HTML>
+<html lang="en">
+
+<head>
+	<style>
+		* {
+			font-family: OpenSans, Arial, sans-serif;
+		}
+
+		body {
+			height: 100%;
+			background: linear-gradient(135deg, #ffffff 35%, #ffcc33 10%);
+			background-attachment: fixed;
+		}
+
+		h1 {
+			color: #9a8b7d;
+		}
+	</style>
+	<title>Color Checker Settings</title>
+</head>
+
+<body>
+	<div style="float: left; margin-right: 20px;">
+		<img alt="" src="/camera/img/logo.png" />
+	</div>
+	<h1>Color Checker Settings</h1>
+	<div id="previewcontainer">
+		<div style="position:relative">
+			<img id="preview" alt="" src="" />
+			<canvas id="draw" alt=""
+				style="position: absolute; top: 0px; left: 0px; border: none; background-color: transparent"></canvas>
+		</div>
+	</div>
+
+	<table>
+		<tr>
+			<th>Marker</th>
+			<th>Tolerance</th>
+			<th>Target color</th>
+			<th>Color interval</th>
+			<th>Status</th>
+		</tr>
+		<tr>
+			<td style="text-align: center; vertical-align: top;">
+				<label for="markerwidthslider">W</label>
+				<input id="markerwidthslider" type="range" min="1" max="200" value="100"
+					oninput="updateWidth(this.value)"><br />
+				<input id="markerwidthnumbox" type="number" min="1" max="200" value="100"
+					oninput="updateWidth(this.value)"><br />
+				<label for="markerheightslider">H</label>
+				<input id="markerheightslider" type="range" min="1" max="200" value="100"
+					oninput="updateHeight(this.value)"><br />
+				<input id="markerheightnumbox" type="number" min="1" max="200" value="100"
+					oninput="updateHeight(this.value)"><br /><br />
+				<select name="Shape" id="markershape" onchange="updateShape(this.value)">
+					<option value="0">Ellipse</option>
+					<option value="1">Rectangle</option>
+				</select>
+				<label for="markerlockaspect">Lock aspect</label>
+				<input id="markerlockaspect" type="checkbox" onchange="updateAspect(this.checked)">
+			</td>
+			<td style="text-align: center; vertical-align: top;">
+				<input id="toleranceslider" type="range" min="0" max="255" value="10"
+					oninput="updateTolerance(this.value)"><br />
+				<input id="tolerancenumbox" type="number" min="0" max="255" value="10"
+					oninput="updateTolerance(this.value)">
+			</td>
+			<td>
+				<table>
+					<tr>
+						<td style="text-align: right;">R:</td>
+						<td><input id="colR" type="number" min="0" max="255" oninput="updateR(this.value)"></td>
+					</tr>
+					<tr>
+						<td style="text-align: right;">G:</td>
+						<td><input id="colG" type="number" min="0" max="255" oninput="updateG(this.value)"></td>
+					</tr>
+					<tr>
+						<td style="text-align: right;">B:</td>
+						<td><input id="colB" type="number" min="0" max="255" oninput="updateB(this.value)"></td>
+					</tr>
+					<tr>
+						<td></td>
+						<td><button type="button" style="width: 100%;" onclick="captureColor()">Capture</button></td>
+					</tr>
+				</table>
+			</td>
+			<td id="intervalgradient"></td>
+			<td style="text-align: center; vertical-align: top;">
+				<h1 id="status"></h1>
+			</td>
+		</tr>
+	</table>
+
+	<script src="js/jquery-3.6.1.min.js"></script>
+	<script src="js/opcuacolorchecker.js"></script>
+</body>
+
+</html>

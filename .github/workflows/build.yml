@@ -1,0 +1,31 @@
+---
+name: Build
+
+on: push
+
+jobs:
+  build_acap:
+    name: Build ACAPs
+    runs-on: ubuntu-latest
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    strategy:
+      matrix:
+        # Build both normal version and debug version
+        debug_write: ["", "debug"]
+    steps:
+      - uses: actions/checkout@v4
+      # Test all Makefile targets and make sure the ACAP files are created
+      - name: Build
+        run: DEBUG_WRITE=${{ matrix.debug_write }} make -j dockerbuild
+      - name: Verify
+        run: |
+          for f in *.eap; do
+          echo "Verification of $f:"
+          tar tzf "$f"
+          done
+      - name: Clean
+        run: |
+          make clean
+          echo 'Make sure no ACAP files are left:'
+          [ -z "$(ls ./*.eap ./*LICENSE.txt)" ]
