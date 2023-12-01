@@ -82,6 +82,25 @@ DOCKER_BUILDKIT=1 docker build --build-arg ARCH=armv7hf -o type=local,dest=. .
 DOCKER_BUILDKIT=1 docker build --build-arg ARCH=aarch64 -o type=local,dest=. .
 ```
 
+## Debug
+
+If you would like the application to store the images from each step in the
+video analysis to disk for debugging, set the `DEBUG_WRITE` variable for the
+build:
+
+```sh
+DEBUG_WRITE=y make -j dockerbuild
+```
+
+or
+
+```sh
+# 32-bit ARM, e.g. ARTPEC-6- and ARTPEC-7-based devices
+DOCKER_BUILDKIT=1 docker build --build-arg DEBUG_WRITE=y --build-arg ARCH=armv7hf -o type=local,dest=. .
+# 64-bit ARM, e.g. ARTPEC-8-based devices
+DOCKER_BUILDKIT=1 docker build --build-arg DEBUG_WRITE=y --build-arg ARCH=aarch64 -o type=local,dest=. .
+```
+
 ## Setup
 
 ### Manual installation and configuration

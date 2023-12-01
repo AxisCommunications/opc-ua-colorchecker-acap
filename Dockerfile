@@ -19,7 +19,6 @@ ARG DEBUG_WRITE
 ENV DEBUG_WRITE=$DEBUG_WRITE
 
 # Install additional build dependencies
-# hadolint ignore=DL3008
 RUN DEBIAN_FRONTEND=noninteractive \
     apt-get update && apt-get install -y -f --no-install-recommends \
     cmake
