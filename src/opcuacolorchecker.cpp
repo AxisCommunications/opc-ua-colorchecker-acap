@@ -653,7 +653,7 @@ int main(int argc, char *argv[])
     LOG_I("%s/%s: tolerance: %u", __FILE__, __FUNCTION__, tolerance);
 
     // Initialize image analysis
-    if (!initimageanalysis(*axparameter, 640, 480))
+    if (!initimageanalysis(*axparameter, 640, 360))
     {
         LOG_E("%s/%s: Failed to init image analysis", __FILE__, __FUNCTION__);
         result = EXIT_FAILURE;

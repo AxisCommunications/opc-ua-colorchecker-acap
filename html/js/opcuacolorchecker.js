@@ -153,8 +153,8 @@ function updateHeight(newvalue) {
 
 function updateAspect(checked) {
 	if (checked) {
-		var width = document.getElementById('markerwidthnumbox').value;
-		updateWH('MarkerHeight', width);
+		var height = document.getElementById('markerheightnumbox').value;
+		updateWH('MarkerWidth', height);
 	}
 }
 
