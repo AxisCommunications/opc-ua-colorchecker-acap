@@ -27,17 +27,16 @@ matches the reference color or not.
 Control And Data Acquisition) system or a [PLC](https://en.wikipedia.org/wiki/Programmable_logic_controller) (Programmable Logic Controller) system with OPC UA as the communication protocol and you want to take advantage of the Axis device capabilities to enrich or complement your operations.
 
 In the manufacturing and process industry, completely analogue machinery is
-still commonplace. This equipment, often expensive and with a long lifespan,
-plays a key role in the factory. Typically, a human operator follows a
-scheduled inspection routine to ensure the machinery operates as expected.
-Alternatively, an operator may monitor it manually through a surveillance
-camera. With the Color Checker application, an Axis camera can do the digital
-transformation for the analogue machinery where the operation status is now
-instantly fed into the factorys' control systems without requiring human
+still commonplace. This equipment is often expensive and has a long lifespan.
+The machinery has control lights that are today manually monitored, and due to
+warranty restrictions, any modifications or the addition of digital sensors are
+prohibited. With the Color Checker application, an Axis camera can do the
+digital transformation for the analogue machinery where the operation status is
+now instantly fed into the factory's control systems without requiring human
 intervention.
 
 In the process industry, a fluid has a certain color when operation is
-normal, but a completely different color when an error occurrs in the process.
+normal, but a completely different color when an error occurs in the process.
 An Axis camera with the Color Checker application can monitor the process
 instead of a human operator, and also instantly feed the factory's control
 system with information about the deviation when the color is outside the set
