@@ -12,7 +12,7 @@
             },
             "vendorUrl": "https://www.axis.com/",
             "runMode": "respawn",
-            "version": "1.0.1"
+            "version": "1.0.2"
         },
         "configuration": {
             "settingPage": "settings.html",
