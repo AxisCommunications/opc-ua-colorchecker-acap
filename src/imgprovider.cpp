@@ -162,7 +162,7 @@ bool ImgProvider::ChooseStreamResolution(
     {
         VdoResolution *res = &set->resolutions[i];
         assert(nullptr != res);
-        LOG_E("%s/%s: resolution %zu: (%ux%u)", __FILE__, __FUNCTION__, i, res->width, res->height);
+        LOG_I("%s/%s: resolution %zu: (%ux%u)", __FILE__, __FUNCTION__, i, res->width, res->height);
         if ((res->width >= reqWidth) && (res->height >= reqHeight))
         {
             unsigned int area = res->width * res->height;
