@@ -26,12 +26,12 @@ matches the reference color or not.
 > The following examples assume that you have a [SCADA](https://en.wikipedia.org/wiki/SCADA) (Supervisory
 Control And Data Acquisition) system or a [PLC](https://en.wikipedia.org/wiki/Programmable_logic_controller) (Programmable Logic Controller) system with OPC UA as the communication protocol and you want to take advantage of the Axis device capabilities to enrich or complement your operations.
 
-In the manufacturing and process industry, completely analogue machinery is
+In the manufacturing and process industry, completely analog machinery is
 still commonplace. This equipment is often expensive and has a long lifespan.
 The machinery has control lights that are today manually monitored, and due to
 warranty restrictions, any modifications or the addition of digital sensors are
 prohibited. With the Color Checker application, an Axis camera can do the
-digital transformation for the analogue machinery where the operation status is
+digital transformation for the analog machinery where the operation status is
 now instantly fed into the factory's control systems without requiring human
 intervention.
 
