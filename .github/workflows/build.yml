@@ -5,7 +5,7 @@ on: push
 
 jobs:
   build_acap:
-    name: Build ACAPs
+    name: Build ACAP packages
     runs-on: ubuntu-latest
     env:
       DEBIAN_FRONTEND: noninteractive
