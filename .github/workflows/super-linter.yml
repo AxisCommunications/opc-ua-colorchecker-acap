@@ -4,8 +4,8 @@ name: Lint
 on: push
 
 jobs:
-  build:
-    name: Lint Code Base
+  Build:
+    name: Lint code base
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -16,8 +16,7 @@ jobs:
       - name: Setup Environment
         run: cat .github/super-linter.env >> "$GITHUB_ENV"
 
-      - name: Lint Code Base
+      - name: Lint code base
         uses: super-linter/super-linter/slim@v6
         env:
-          DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
