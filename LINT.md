@@ -22,7 +22,7 @@ docker run --rm \
   -v "$PWD":/tmp/lint \
   -e RUN_LOCAL=true \
   --env-file .github/super-linter.env \
-  ghcr.io/super-linter/super-linter:slim-v5
+  ghcr.io/super-linter/super-linter:slim-v6
 ```
 
 ## Run super-linter interactively
@@ -36,21 +36,21 @@ docker run -it --rm \
   -w /tmp/lint \
   --env-file .github/super-linter.env \
   --entrypoint /bin/bash \
-  ghcr.io/super-linter/super-linter:slim-v5
+  ghcr.io/super-linter/super-linter:slim-v6
 ```
 
 Then from the container terminal, the following commands can lint the the code
 base for different file types:
 
 ```sh
-# Lint C code (format)
-find "$PWD" \( -iname \*.c -or -iname \*.h \) -exec clang-format --dry-run --Werror --verbose {} +
+# Lint C++ code (format)
+find "$PWD" \( -iname \*.cpp -or -iname \*.hpp \) -exec clang-format --dry-run --Werror --verbose {} +
 
 # Lint Dockerfile files
-hadolint $(find -type f -name Dockerfile*)
+hadolint $(find -type f -name Dockerfile\*)
 
 # Lint Dockerfile files (alternative command)
-find -type f -name Dockerfile* -exec hadolint {} +
+find -type f -name Dockerfile\* -exec hadolint {} +
 
 # Lint JSON files
 eslint --no-eslintrc -c /action/lib/.automation/.eslintrc.yml --ext .json .
