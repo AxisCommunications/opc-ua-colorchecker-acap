@@ -12,7 +12,7 @@
             },
             "vendorUrl": "https://www.axis.com/",
             "runMode": "respawn",
-            "version": "1.0.3"
+            "version": "1.0.4"
         },
         "configuration": {
             "settingPage": "settings.html",
@@ -21,18 +21,18 @@
                 {"type": "transferCgi", "name": "pickcurrent.cgi", "access": "admin"}
             ],
             "paramConfig": [
-                {"name": "CenterX", "type": "int:min=0,max=639", "default": "100"},
-                {"name": "CenterY", "type": "int:min=0,max=359", "default": "170"},
+                {"name": "CenterX", "type": "int:min=0,max=959", "default": "100"},
+                {"name": "CenterY", "type": "int:min=0,max=539", "default": "170"},
                 {"name": "ColorB", "type": "double:min=0,max=255", "default": "50"},
                 {"name": "ColorG", "type": "double:min=0,max=255", "default": "50"},
                 {"name": "ColorR", "type": "double:min=0,max=255", "default": "50"},
-                {"name": "Height", "type": "int:min=0,max=1080", "default": "360"},
-                {"name": "MarkerHeight", "type": "int:min=1,max=360", "default": "25"},
+                {"name": "Height", "type": "int:min=1,max=1080", "default": "360"},
+                {"name": "MarkerHeight", "type": "int:min=1", "default": "25"},
                 {"name": "MarkerShape", "type": "enum:0|Ellipse, 1|Rectangle", "default": "0"},
-                {"name": "MarkerWidth", "type": "int:min=1,max=640", "default": "25"},
+                {"name": "MarkerWidth", "type": "int:min=1", "default": "25"},
                 {"name": "Port", "type": "int:min=1024,max=65535", "default": "4840"},
                 {"name": "Tolerance", "type": "int:min=0,max=255", "default": "35"},
-                {"name": "Width", "type": "int:min=0,max=1920", "default": "640"}
+                {"name": "Width", "type": "int:min=1,max=1920", "default": "640"}
             ]
         }
     }

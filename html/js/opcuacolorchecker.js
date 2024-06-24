@@ -152,9 +152,21 @@ function updateHeight(newvalue) {
 }
 
 function updateAspect(checked) {
+	const preview = document.getElementById('preview');
+	const width = preview.width;
+	const height = preview.height;
+
+	const mwmax = checked ? Math.min(width, height) : width;
+	const mhmax = checked ? mwmax : height;
+
+	document.getElementById('markerwidthnumbox').max = mwmax;
+	document.getElementById('markerwidthslider').max = mwmax;
+	document.getElementById('markerheightslider').max = mhmax;
+	document.getElementById('markerheightslider').max = mhmax;
+
 	if (checked) {
-		var height = document.getElementById('markerheightnumbox').value;
-		updateWH('MarkerWidth', height);
+		var hval = document.getElementById('markerheightnumbox').value;
+		updateWH('MarkerWidth', hval);
 	}
 }
 
@@ -272,9 +284,11 @@ async function initWithCurrentValues() {
 	document.getElementById('markerwidthslider').value = markerwidth;
 	document.getElementById('markerheightnumbox').value = markerheight;
 	document.getElementById('markerheightslider').value = markerheight;
-	document.getElementById('markerlockaspect').checked = (markerwidth == markerheight);
 	document.getElementById('markershape').value = markershape;
 
+	const markerlockaspect = (markerwidth == markerheight);
+	document.getElementById('markerlockaspect').checked = markerlockaspect;
+	updateAspect(markerlockaspect);
 	handleCoord(center.X, center.Y, false);
 	updateTolerance(tolerance, false);
 }
