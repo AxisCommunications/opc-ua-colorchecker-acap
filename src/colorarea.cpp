@@ -139,6 +139,18 @@ ColorAreaEllipse::ColorAreaEllipse(
     const uint8_t tolerance)
     : ColorArea(img, point_center, color, markerwidth, markerheight, tolerance)
 {
+#if defined(DEBUG_WRITE)
+    // Create a debug image tho show the marker
+    auto marker_img = img.clone();
+
+    // Draw the ellipse
+    Size axes(markerwidth / 2, markerheight / 2);
+    ellipse(marker_img, point_center, axes, 0, 0, 360, cv::Scalar(0, 0, 0), 3);
+    ellipse(marker_img, point_center, axes, 0, 0, 360, cv::Scalar(255, 255, 255), 1);
+
+    DBG_WRITE_IMG("marker_img.jpg", marker_img);
+#endif
+
     // Create color mask
     colorarea_mask = Mat::zeros(Size(croprange_x.size(), croprange_y.size()), CV_8U);
     ellipse(
@@ -165,6 +177,20 @@ ColorAreaRectangle::ColorAreaRectangle(
     const uint8_t tolerance)
     : ColorArea(img, point_center, color, markerwidth, markerheight, tolerance)
 {
+#if defined(DEBUG_WRITE)
+    // Create a debug image tho show the marker
+    auto marker_img = img.clone();
+
+    // Draw the rectangle
+    auto pt1 = point_center - Point(markerwidth / 2, markerheight / 2);
+    auto pt2 = point_center + Point(markerwidth / 2, markerheight / 2);
+    rectangle(marker_img, pt1, pt2, Scalar(0, 0, 0), 3);
+    rectangle(marker_img, pt1, pt2, Scalar(255, 255, 255), 1);
+
+    DBG_WRITE_IMG("marker_img.jpg", marker_img);
+#endif
+
+    // Create color mask
     colorarea_mask = Mat::ones(Size(croprange_x.size(), croprange_y.size()), CV_8U) * 255;
     DBG_WRITE_IMG("mask_img.jpg", colorarea_mask);
     LOG_I("%s/%s: Rectancular colorarea created", __FILE__, __FUNCTION__);
