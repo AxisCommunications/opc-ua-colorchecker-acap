@@ -2,7 +2,7 @@
 
 # OPC UA Color Checker ACAP
 
-[![Build ACAPs](https://github.com/AxisCommunications/opc-ua-colorchecker-acap/actions/workflows/build.yml/badge.svg)](https://github.com/AxisCommunications/opc-ua-colorchecker-acap/actions/workflows/build.yml)
+[![Build ACAP packages](https://github.com/AxisCommunications/opc-ua-colorchecker-acap/actions/workflows/build.yml/badge.svg)](https://github.com/AxisCommunications/opc-ua-colorchecker-acap/actions/workflows/build.yml)
 [![GitHub Super-Linter](https://github.com/AxisCommunications/opc-ua-colorchecker-acap/actions/workflows/super-linter.yml/badge.svg)](https://github.com/AxisCommunications/opc-ua-colorchecker-acap/actions/workflows/super-linter.yml)
 
 This repository contains the source code to build a small example

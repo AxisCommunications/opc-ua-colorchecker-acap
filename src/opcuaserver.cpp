@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-#include "opcuaserver.hpp"
+#include <assert.h>
+
 #include "common.hpp"
+#include "opcuaserver.hpp"
 
 using namespace std;
 

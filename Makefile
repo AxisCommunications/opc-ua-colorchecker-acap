@@ -9,7 +9,7 @@ CXXFLAGS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --cflags-only-
 LDLIBS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs $(PKGS))
 
 CXXFLAGS += -I$(SDKTARGETSYSROOT)/usr/include/opencv4 -I$(CURDIR)/include
-LDFLAGS = -L./lib -Wl,--no-as-needed,-rpath,'$$ORIGIN/lib'
+LDFLAGS = -L./lib -Wl,--no-as-needed,-rpath,'$$ORIGIN/lib' -flto=auto
 LDLIBS += -lm -lopencv_core -lopencv_imgproc -lopencv_video -lpthread
 
 # Set DEBUG_WRITE to write debug images to storage
@@ -29,7 +29,7 @@ $(TARGET): $(OBJECTS)
 
 # docker build container targets
 %.eap:
-	DOCKER_BUILDKIT=1 docker build $(DOCKER_ARGS) --build-arg ARCH=$(basename $@) -o type=local,dest=. "$(CURDIR)"
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_ARGS) --build-arg ARCH=$(*F) -o type=local,dest=. "$(CURDIR)"
 
 dockerbuild: armv7hf.eap aarch64.eap
 
