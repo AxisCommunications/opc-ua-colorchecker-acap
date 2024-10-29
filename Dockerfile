@@ -107,11 +107,11 @@ WORKDIR "$OPEN62541_BUILD_DIR"
 RUN . /opt/axis/acapsdk/environment-setup* && \
     cmake -j \
     -DCMAKE_INSTALL_PREFIX="$SDKTARGETSYSROOT"/usr \
-    -DBUILD_BUILD_EXAMPLES=OFF \
+    -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=ON \
     -DUA_ENABLE_NODEMANAGEMENT=ON \
     "$OPEN62541_SRC_DIR"
-RUN make -j install
+RUN make -j "$(nproc)" install
 
 # Copy the built library files to application directory
 WORKDIR "$ACAP_BUILD_DIR"/lib
