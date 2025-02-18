@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023, Axis Communications AB, Lund, Sweden
+ * Copyright (C) 2025, Axis Communications AB, Lund, Sweden
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,8 @@
 #include <stdexcept>
 #include <vector>
 
+#include "EventHandler.hpp"
 #include "common.hpp"
-#include "evhandler.hpp"
 
 using namespace std;
 
@@ -34,7 +34,7 @@ static void declaration_complete(guint declaration, gpointer user_data)
     LOG_I("%s/%s: Event declaration complete!", __FILE__, __FUNCTION__);
 }
 
-AxEventHandler::AxEventHandler() : evhandler(ax_event_handler_new()), initialized(false)
+EventHandler::EventHandler() : event_handler_(ax_event_handler_new()), initialized_(false)
 {
     GError *error = nullptr;
 
@@ -68,12 +68,12 @@ AxEventHandler::AxEventHandler() : evhandler(ax_event_handler_new()), initialize
 
     // Declare event
     if (!ax_event_handler_declare(
-            evhandler,
+            event_handler_,
             set,
             FALSE, // define stateful event
-            &eventid,
+            &event_id_,
             declaration_complete,
-            &initialized,
+            &initialized_,
             &error))
     {
         LOG_E("%s/%s: Could not declare: %s", __FILE__, __FUNCTION__, error->message);
@@ -85,21 +85,21 @@ AxEventHandler::AxEventHandler() : evhandler(ax_event_handler_new()), initialize
     ax_event_key_value_set_free(set);
 }
 
-AxEventHandler::~AxEventHandler()
+EventHandler::~EventHandler()
 {
-    assert(nullptr != evhandler);
-    assert(0 != eventid);
+    assert(nullptr != event_handler_);
+    assert(0 != event_id_);
 
     LOG_I("%s/%s: Undeclare event ...", __FILE__, __FUNCTION__);
-    ax_event_handler_undeclare(evhandler, eventid, nullptr);
+    ax_event_handler_undeclare(event_handler_, event_id_, nullptr);
 
     LOG_I("%s/%s: Free eventhandler ...", __FILE__, __FUNCTION__);
-    ax_event_handler_free(evhandler);
+    ax_event_handler_free(event_handler_);
 }
 
-void AxEventHandler::Send(const gboolean active) const
+void EventHandler::Send(const gboolean active) const
 {
-    if (!initialized)
+    if (!initialized_)
     {
         LOG_I("%s/%s: Event handling not yet initialized", __FILE__, __FUNCTION__);
         return;
@@ -117,8 +117,8 @@ void AxEventHandler::Send(const gboolean active) const
     ax_event_key_value_set_free(set);
 
     // Send the event
-    assert(nullptr != evhandler);
-    ax_event_handler_send_event(evhandler, eventid, event, NULL);
+    assert(nullptr != event_handler_);
+    ax_event_handler_send_event(event_handler_, event_id_, event, NULL);
 
     LOG_I("%s/%s: Stateful event (%s tolerance) sent", __FILE__, __FUNCTION__, active ? "within" : "exceeds");
 

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023, Axis Communications AB, Lund, Sweden
+ * Copyright (C) 2025, Axis Communications AB, Lund, Sweden
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@
 
 #include <assert.h>
 
+#include "OpcUaServer.hpp"
 #include "common.hpp"
-#include "opcuaserver.hpp"
 
 using namespace std;
 
 #define LABEL (char *)"ColorAreaReading"
 
-OpcUaServer::OpcUaServer() : serverthread(nullptr), running(false), server(nullptr)
+OpcUaServer::OpcUaServer() : serverthread_(nullptr), running_(false), server_(nullptr)
 {
 }
 
@@ -34,65 +34,65 @@ OpcUaServer::~OpcUaServer()
 bool OpcUaServer::LaunchServer(const unsigned int serverport)
 {
     LOG_I("%s/%s: port %u", __FILE__, __FUNCTION__, serverport);
-    assert(nullptr == server);
-    assert(nullptr == serverthread);
-    assert(!running);
+    assert(nullptr == server_);
+    assert(nullptr == serverthread_);
+    assert(!running_);
     assert(1024 <= serverport && 65535 >= serverport);
 
     // Create an OPC UA server
     LOG_I("%s/%s: Create UA server serving on port %u", __FILE__, __FUNCTION__, serverport);
-    server = UA_Server_new();
-    if (nullptr == server)
+    server_ = UA_Server_new();
+    if (nullptr == server_)
     {
         LOG_E("%s/%s: Failed to create new UA_Server", __FILE__, __FUNCTION__);
         return false;
     }
-    UA_ServerConfig_setMinimal(UA_Server_getConfig(server), serverport, nullptr);
+    UA_ServerConfig_setMinimal(UA_Server_getConfig(server_), serverport, nullptr);
     AddBoolean(LABEL, false);
 
-    serverthread = new thread(this->RunUaServer, this);
+    serverthread_ = new thread(this->RunUaServer, this);
 
     return true;
 }
 
 void OpcUaServer::ShutDownServer()
 {
-    assert(running);
-    assert(nullptr != serverthread);
+    assert(running_);
+    assert(nullptr != serverthread_);
 
     LOG_I("%s/%s: Shutting down UA server ...", __FILE__, __FUNCTION__);
-    running = false;
-    if (nullptr != serverthread)
+    running_ = false;
+    if (nullptr != serverthread_)
     {
-        if (serverthread->joinable())
+        if (serverthread_->joinable())
         {
-            serverthread->join();
+            serverthread_->join();
         }
-        delete serverthread;
-        serverthread = nullptr;
+        delete serverthread_;
+        serverthread_ = nullptr;
     }
-    assert(nullptr == server);
+    assert(nullptr == server_);
     LOG_I("%s/%s: UA server has been shut down", __FILE__, __FUNCTION__);
 }
 
 bool OpcUaServer::IsRunning() const
 {
-    if (running)
+    if (running_)
     {
-        assert(nullptr != server);
-        assert(nullptr != serverthread);
+        assert(nullptr != server_);
+        assert(nullptr != serverthread_);
     }
     else
     {
-        assert(nullptr == server);
-        assert(nullptr == serverthread);
+        assert(nullptr == server_);
+        assert(nullptr == serverthread_);
     }
-    return running;
+    return running_;
 }
 
 void OpcUaServer::UpdateColorAreaValue(bool value)
 {
-    if (nullptr == server)
+    if (nullptr == server_)
     {
         return;
     }
@@ -102,19 +102,19 @@ void OpcUaServer::UpdateColorAreaValue(bool value)
     UA_Variant newvalue;
     UA_Variant_setScalar(&newvalue, &value, &UA_TYPES[UA_TYPES_BOOLEAN]);
     UA_NodeId currentNodeId = UA_NODEID_STRING(1, LABEL);
-    UA_Server_writeValue(server, currentNodeId, newvalue);
+    UA_Server_writeValue(server_, currentNodeId, newvalue);
     LOG_D("%s%s: Color area value set to: %s", __FILE__, __FUNCTION__, value ? "TRUE" : "FALSE");
 }
 
 bool OpcUaServer::GetColorAreaValue()
 {
-    assert(nullptr != server);
+    assert(nullptr != server_);
 
     UA_NodeId currentNodeId = UA_NODEID_STRING(1, LABEL);
 
     UA_Variant value;
     UA_Variant_init(&value);
-    UA_Server_readValue(server, currentNodeId, &value);
+    UA_Server_readValue(server_, currentNodeId, &value);
 
     assert(UA_Variant_isScalar(&value));
     assert(UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_BOOLEAN]));
@@ -127,7 +127,7 @@ bool OpcUaServer::GetColorAreaValue()
 
 void OpcUaServer::AddBoolean(char *label, UA_Boolean value)
 {
-    assert(nullptr != server);
+    assert(nullptr != server_);
     assert(nullptr != label);
 
     // Define attributes
@@ -145,7 +145,7 @@ void OpcUaServer::AddBoolean(char *label, UA_Boolean value)
     UA_NodeId parent_node_id = UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER);
     UA_NodeId parent_ref_node_id = UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES);
     UA_Server_addVariableNode(
-        server,
+        server_,
         node_id,
         parent_node_id,
         parent_ref_node_id,
@@ -159,14 +159,14 @@ void OpcUaServer::AddBoolean(char *label, UA_Boolean value)
 void OpcUaServer::RunUaServer(OpcUaServer *parent)
 {
     assert(nullptr != parent);
-    assert(nullptr != parent->server);
-    assert(false == parent->running);
+    assert(nullptr != parent->server_);
+    assert(false == parent->running_);
 
     LOG_I("%s/%s: Starting UA server ...", __FILE__, __FUNCTION__);
-    parent->running = true;
-    UA_StatusCode status = UA_Server_run(parent->server, &parent->running);
+    parent->running_ = true;
+    UA_StatusCode status = UA_Server_run(parent->server_, &parent->running_);
     LOG_I("%s/%s: UA Server exit status: %s", __FILE__, __FUNCTION__, UA_StatusCode_name(status));
-    UA_Server_delete(parent->server);
-    parent->server = nullptr;
+    UA_Server_delete(parent->server_);
+    parent->server_ = nullptr;
     return;
 }

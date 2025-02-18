@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023, Axis Communications AB, Lund, Sweden
+ * Copyright (C) 2025, Axis Communications AB, Lund, Sweden
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,29 +14,24 @@
  * limitations under the License.
  */
 
+/**
+ * This header file handles the vdo part of the application.
+ */
+
 #pragma once
 
-#include <open62541/server.h>
-#include <open62541/server_config_default.h>
-#include <thread>
+#include <axevent.h>
+#include <string>
 
-class OpcUaServer
+class EventHandler
 {
   public:
-    OpcUaServer();
-    ~OpcUaServer();
-    bool LaunchServer(const unsigned int port);
-    void ShutDownServer();
-    bool IsRunning() const;
-    void UpdateColorAreaValue(bool value);
-    bool GetColorAreaValue(void);
+    EventHandler();
+    ~EventHandler();
+    void Send(const gboolean active) const;
 
-  protected:
   private:
-    void AddBoolean(char *label, UA_Boolean value);
-    static void RunUaServer(OpcUaServer *parent);
-    bool colorareavalue;
-    std::thread *serverthread;
-    UA_Boolean running;
-    UA_Server *server;
+    AXEventHandler *event_handler_;
+    bool initialized_;
+    guint event_id_;
 };

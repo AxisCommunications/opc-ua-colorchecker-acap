@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023, Axis Communications AB, Lund, Sweden
+ * Copyright (C) 2025, Axis Communications AB, Lund, Sweden
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@
 #include <map>
 #include <opencv2/imgproc.hpp>
 
-#include "colorarea.hpp"
+#include "ColorArea.hpp"
 #include "common.hpp"
 
 using namespace cv;
@@ -41,7 +41,8 @@ ColorArea::ColorArea(
     const uint32_t markerwidth,
     const uint32_t markerheight,
     const uint8_t tolerance)
-    : color(color), img_size(img.size()), markerwidth(markerwidth), markerheight(markerheight), tolerance(tolerance)
+    : color_(color), img_size_(img.size()), markerwidth_(markerwidth), markerheight_(markerheight),
+      tolerance_(tolerance)
 {
     // Crop to avoid processing pixels outside color area
     int max_x = point_center.x + markerwidth / 2;
@@ -64,12 +65,12 @@ ColorArea::ColorArea(
     {
         min_y = 0;
     }
-    croprange_x = Range(min_x, max_x);
-    croprange_y = Range(min_y, max_y);
-    const Point offset(croprange_x.start, croprange_y.start);
-    this->point_center = point_center - offset;
+    croprange_x_ = Range(min_x, max_x);
+    croprange_y_ = Range(min_y, max_y);
+    const Point offset(croprange_x_.start, croprange_y_.start);
+    point_center_ = point_center - offset;
 #if defined(DEBUG_WRITE)
-    Mat cropped_img = img(croprange_y, croprange_x);
+    Mat cropped_img = img(croprange_y_, croprange_x_);
     DBG_WRITE_IMG("cropped_img.jpg", cropped_img);
 #endif
 
@@ -79,8 +80,8 @@ ColorArea::ColorArea(
         "%u",
         __FILE__,
         __FUNCTION__,
-        img_size.width,
-        img_size.height,
+        img_size_.width,
+        img_size_.height,
         markerwidth,
         markerheight,
         point_center.x,
@@ -98,36 +99,36 @@ ColorArea::~ColorArea()
 Scalar ColorArea::GetAverageColor(const Mat &img) const
 {
     // Make sure input image has the same size as the gague was set up for
-    assert(img_size == img.size());
+    assert(img.size() == img_size_);
 
     // Crop
-    auto crop_img = img(croprange_y, croprange_x);
+    auto crop_img = img(croprange_y_, croprange_x_);
     DBG_WRITE_IMG("avg_after_crop.jpg", crop_img);
 
-    return mean(crop_img, colorarea_mask);
+    return mean(crop_img, colorarea_mask_);
 }
 
 bool ColorArea::ColorAreaValueWithinTolerance(const Mat &img) const
 {
     // Make sure input image has the same size as the gague was set up for
-    assert(img_size == img.size());
+    assert(img_size_ == img.size());
 
     auto currentavg = GetAverageColor(img);
     LOG_D(
         "%s/%s: Target/Current average color in region: (%1.f, %.1f, %.1f)/(%.1f, %.1f, %.1f)",
         __FILE__,
         __FUNCTION__,
-        color.val[R],
-        color.val[G],
-        color.val[B],
+        color_.val[R],
+        color_.val[G],
+        color_.val[B],
         currentavg.val[R],
         currentavg.val[G],
         currentavg.val[B]);
-    auto colordiff_r = abs(color.val[R] - currentavg.val[R]);
-    auto colordiff_g = abs(color.val[G] - currentavg.val[G]);
-    auto colordiff_b = abs(color.val[B] - currentavg.val[B]);
+    auto colordiff_r = abs(color_.val[R] - currentavg.val[R]);
+    auto colordiff_g = abs(color_.val[G] - currentavg.val[G]);
+    auto colordiff_b = abs(color_.val[B] - currentavg.val[B]);
 
-    return (tolerance > colordiff_r && tolerance > colordiff_g && tolerance > colordiff_b);
+    return (tolerance_ > colordiff_r && tolerance_ > colordiff_g && tolerance_ > colordiff_b);
 }
 
 ColorAreaEllipse::ColorAreaEllipse(
@@ -152,10 +153,10 @@ ColorAreaEllipse::ColorAreaEllipse(
 #endif
 
     // Create color mask
-    colorarea_mask = Mat::zeros(Size(croprange_x.size(), croprange_y.size()), CV_8U);
+    colorarea_mask_ = Mat::zeros(Size(croprange_x_.size(), croprange_y_.size()), CV_8U);
     ellipse(
-        colorarea_mask,
-        this->point_center,
+        colorarea_mask_,
+        point_center_,
         Size(markerwidth / 2, markerheight / 2),
         0.0,
         0,
@@ -164,7 +165,7 @@ ColorAreaEllipse::ColorAreaEllipse(
         -1,
         LINE_8,
         0);
-    DBG_WRITE_IMG("mask_img.jpg", colorarea_mask);
+    DBG_WRITE_IMG("mask_img.jpg", colorarea_mask_);
     LOG_I("%s/%s: Elliptic colorarea created", __FILE__, __FUNCTION__);
 }
 
@@ -191,7 +192,7 @@ ColorAreaRectangle::ColorAreaRectangle(
 #endif
 
     // Create color mask
-    colorarea_mask = Mat::ones(Size(croprange_x.size(), croprange_y.size()), CV_8U) * 255;
-    DBG_WRITE_IMG("mask_img.jpg", colorarea_mask);
+    colorarea_mask_ = Mat::ones(Size(croprange_x_.size(), croprange_y_.size()), CV_8U) * 255;
+    DBG_WRITE_IMG("mask_img.jpg", colorarea_mask_);
     LOG_I("%s/%s: Rectancular colorarea created", __FILE__, __FUNCTION__);
 }

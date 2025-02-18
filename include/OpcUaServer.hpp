@@ -16,16 +16,27 @@
 
 #pragma once
 
-#include <stdio.h>
-#include <syslog.h>
+#include <open62541/server.h>
+#include <open62541/server_config_default.h>
+#include <thread>
 
-// clang-format off
-#define LOG(type, fmt, ...) { syslog(type, fmt, ##__VA_ARGS__); printf(fmt, ##__VA_ARGS__); printf("\n"); }
-#define LOG_I(fmt, ...) { LOG(LOG_INFO, fmt, ##__VA_ARGS__) }
-#define LOG_E(fmt, ...) { LOG(LOG_ERR, fmt, ##__VA_ARGS__) }
-#if defined(DEBUG_WRITE)
-#define LOG_D(fmt, ...) { LOG(LOG_DEBUG, fmt, ##__VA_ARGS__) }
-#else
-#define LOG_D(fmt, ...)
-#endif
-// clang-format on
+class OpcUaServer
+{
+  public:
+    OpcUaServer();
+    ~OpcUaServer();
+    bool LaunchServer(const unsigned int port);
+    void ShutDownServer();
+    bool IsRunning() const;
+    void UpdateColorAreaValue(bool value);
+    bool GetColorAreaValue(void);
+
+  protected:
+  private:
+    void AddBoolean(char *label, UA_Boolean value);
+    static void RunUaServer(OpcUaServer *parent);
+    bool colorareavalue_;
+    std::thread *serverthread_;
+    UA_Boolean running_;
+    UA_Server *server_;
+};

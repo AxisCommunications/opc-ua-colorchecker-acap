@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023, Axis Communications AB, Lund, Sweden
+ * Copyright (C) 2025, Axis Communications AB, Lund, Sweden
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,15 +41,15 @@ class ColorArea
     cv::Scalar GetAverageColor(const cv::Mat &img) const;
 
   protected:
-    cv::Mat colorarea_mask;
-    cv::Point point_center;
-    cv::Range croprange_x;
-    cv::Range croprange_y;
-    cv::Scalar color;
-    cv::Size img_size;
-    uint32_t markerwidth;
-    uint32_t markerheight;
-    uint8_t tolerance;
+    cv::Mat colorarea_mask_;
+    cv::Point point_center_;
+    cv::Range croprange_x_;
+    cv::Range croprange_y_;
+    cv::Scalar color_;
+    cv::Size img_size_;
+    uint32_t markerwidth_;
+    uint32_t markerheight_;
+    uint8_t tolerance_;
 };
 
 class ColorAreaEllipse : public ColorArea

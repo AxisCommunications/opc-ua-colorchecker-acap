@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023, Axis Communications AB, Lund, Sweden
+ * Copyright (C) 2025, Axis Communications AB, Lund, Sweden
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,10 @@
 #include <pthread.h>
 #include <stdbool.h>
 
-#include "vdo-stream.h"
-#include "vdo-types.h"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <vdo-stream.h>
+#include <vdo-types.h>
+#pragma GCC diagnostic pop
 
 #define _Atomic(X) std::atomic<X>
 #define NUM_VDO_BUFFERS (8)
@@ -37,46 +39,46 @@
  * VDO types to setup and maintain a stream, as well as parameters to make
  * the streaming thread safe.
  */
-class ImgProvider
+class ImageProvider
 {
   public:
-    ImgProvider(const unsigned int w, const unsigned int h, const unsigned int numFrames, const VdoFormat format);
-    ~ImgProvider();
-    bool InitImgProvider();
+    ImageProvider(const unsigned int w, const unsigned int h, const unsigned int numFrames, const VdoFormat format);
+    ~ImageProvider();
+    bool InitImageProvider();
     static bool ChooseStreamResolution(
         const unsigned int reqWidth,
         const unsigned int reqHeight,
         unsigned int &chosenWidth,
         unsigned int &chosenHeight);
-    static bool CreateStream(ImgProvider &provider);
-    static bool AllocateVdoBuffers(ImgProvider &provider, VdoStream &vdoStream);
-    static void ReleaseVdoBuffers(ImgProvider &provider);
-    static VdoBuffer *GetLastFrameBlocking(ImgProvider &provider);
-    static void ReturnFrame(ImgProvider &provider, VdoBuffer &buffer);
+    static bool CreateStream(ImageProvider &provider);
+    static bool AllocateVdoBuffers(ImageProvider &provider, VdoStream &vdoStream);
+    static void ReleaseVdoBuffers(ImageProvider &provider);
+    static VdoBuffer *GetLastFrameBlocking(ImageProvider &provider);
+    static void ReturnFrame(ImageProvider &provider, VdoBuffer &buffer);
     static void *threadEntry(void *data);
-    static bool StartFrameFetch(ImgProvider &provider);
-    static bool StopFrameFetch(ImgProvider &provider);
+    static bool StartFrameFetch(ImageProvider &provider);
+    static bool StopFrameFetch(ImageProvider &provider);
 
     /// Keeping track of frames' statuses.
-    GQueue *delivered_frames;
-    GQueue *processed_frames;
+    GQueue *delivered_frames_;
+    GQueue *processed_frames_;
 
     /// To support fetching frames asynchonously with VDO.
-    pthread_mutex_t frame_mutex;
-    pthread_cond_t frame_deliver_cond;
-    pthread_t fetcher_thread;
-    std::atomic_bool shutdown;
+    pthread_mutex_t frame_mutex_;
+    pthread_cond_t frame_deliver_cond_;
+    pthread_t fetcher_thread_;
+    std::atomic_bool shutdown_;
 
   private:
     void RunLoopIteration();
-    bool initialized;
-    unsigned int width;
-    unsigned int height;
+    bool initialized_;
+    unsigned int width_;
+    unsigned int height_;
     /// Number of frames to keep in the delivered_frames queue.
-    unsigned int num_app_frames;
+    unsigned int num_app_frames_;
     // Stream configuration parameters.
-    VdoFormat vdo_format;
+    VdoFormat vdo_format_;
     // Vdo stream and buffers handling.
-    VdoStream *vdo_stream;
-    VdoBuffer *vdo_buffers[NUM_VDO_BUFFERS];
+    VdoStream *vdo_stream_;
+    VdoBuffer *vdo_buffers_[NUM_VDO_BUFFERS];
 };
