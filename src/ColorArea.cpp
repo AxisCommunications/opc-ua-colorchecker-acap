@@ -102,7 +102,7 @@ Scalar ColorArea::GetAverageColor(const Mat &img) const
     assert(img.size() == img_size_);
 
     // Crop
-    auto crop_img = img(croprange_y_, croprange_x_);
+    const auto crop_img = img(croprange_y_, croprange_x_);
     DBG_WRITE_IMG("avg_after_crop.jpg", crop_img);
 
     return mean(crop_img, colorarea_mask_);
@@ -113,7 +113,7 @@ bool ColorArea::ColorAreaValueWithinTolerance(const Mat &img) const
     // Make sure input image has the same size as the gague was set up for
     assert(img_size_ == img.size());
 
-    auto currentavg = GetAverageColor(img);
+    const auto currentavg = GetAverageColor(img);
     LOG_D(
         "%s/%s: Target/Current average color in region: (%1.f, %.1f, %.1f)/(%.1f, %.1f, %.1f)",
         __FILE__,
@@ -124,9 +124,9 @@ bool ColorArea::ColorAreaValueWithinTolerance(const Mat &img) const
         currentavg.val[R],
         currentavg.val[G],
         currentavg.val[B]);
-    auto colordiff_r = abs(color_.val[R] - currentavg.val[R]);
-    auto colordiff_g = abs(color_.val[G] - currentavg.val[G]);
-    auto colordiff_b = abs(color_.val[B] - currentavg.val[B]);
+    const auto colordiff_r = abs(color_.val[R] - currentavg.val[R]);
+    const auto colordiff_g = abs(color_.val[G] - currentavg.val[G]);
+    const auto colordiff_b = abs(color_.val[B] - currentavg.val[B]);
 
     return (tolerance_ > colordiff_r && tolerance_ > colordiff_g && tolerance_ > colordiff_b);
 }
@@ -142,7 +142,7 @@ ColorAreaEllipse::ColorAreaEllipse(
 {
 #if defined(DEBUG_WRITE)
     // Create a debug image tho show the marker
-    auto marker_img = img.clone();
+    const auto marker_img = img.clone();
 
     // Draw the ellipse
     Size axes(markerwidth / 2, markerheight / 2);
@@ -180,11 +180,11 @@ ColorAreaRectangle::ColorAreaRectangle(
 {
 #if defined(DEBUG_WRITE)
     // Create a debug image tho show the marker
-    auto marker_img = img.clone();
+    const auto marker_img = img.clone();
 
     // Draw the rectangle
-    auto pt1 = point_center - Point(markerwidth / 2, markerheight / 2);
-    auto pt2 = point_center + Point(markerwidth / 2, markerheight / 2);
+    const auto pt1 = point_center - Point(markerwidth / 2, markerheight / 2);
+    const auto pt2 = point_center + Point(markerwidth / 2, markerheight / 2);
     rectangle(marker_img, pt1, pt2, Scalar(0, 0, 0), 3);
     rectangle(marker_img, pt1, pt2, Scalar(255, 255, 255), 1);
 
