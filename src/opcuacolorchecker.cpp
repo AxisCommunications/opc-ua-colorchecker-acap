@@ -15,15 +15,14 @@
  */
 
 #include <atomic>
-#include <axhttp.h>
 #include <axparameter.h>
 #include <mutex>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/video.hpp>
 #include <stdexcept>
-#include <string>
 #include <syslog.h>
 
+#include "CgiHandler.hpp"
 #include "ColorArea.hpp"
 #include "EventHandler.hpp"
 #include "ImageProvider.hpp"
@@ -61,11 +60,12 @@ static OpcUaServer opcuaserver;
 static ImageProvider *provider = nullptr;
 static Mat nv12_mat;
 
-static gboolean set_param(AXParameter &axparameter, const gchar *name, const gchar &value, gboolean do_sync = TRUE)
+static gboolean set_param(const gchar *name, const gchar &value, gboolean do_sync = TRUE)
 {
+    assert(nullptr != axparameter);
     GError *error = nullptr;
 
-    if (!ax_parameter_set(&axparameter, name, &value, do_sync, &error))
+    if (!ax_parameter_set(axparameter, name, &value, do_sync, &error))
     {
         LOG_E("%s/%s: failed to set %s parameter", __FILE__, __FUNCTION__, name);
         if (nullptr != error)
@@ -79,21 +79,21 @@ static gboolean set_param(AXParameter &axparameter, const gchar *name, const gch
     return TRUE;
 }
 
-static gboolean
-set_param_double(AXParameter &axparameter, const gchar *name, const double value, gboolean do_sync = TRUE)
+static gboolean set_param_double(const gchar *name, const double value, gboolean do_sync = TRUE)
 {
-    gchar *valuestr = g_strdup_printf("%f", value);
+    const auto valuestr = g_strdup_printf("%f", value);
     assert(nullptr != valuestr);
-    gboolean result = set_param(axparameter, name, *valuestr, do_sync);
+    gboolean result = set_param(name, *valuestr, do_sync);
     g_free(valuestr);
     return result;
 }
 
-static gchar *get_param(AXParameter &axparameter, const gchar *name)
+static gchar *get_param(const gchar *name)
 {
+    assert(nullptr != axparameter);
     GError *error = nullptr;
     gchar *value = nullptr;
-    if (!ax_parameter_get(&axparameter, name, &value, &error))
+    if (!ax_parameter_get(axparameter, name, &value, &error))
     {
         LOG_E("%s/%s: failed to get %s parameter", __FILE__, __FUNCTION__, name);
         if (nullptr != error)
@@ -107,9 +107,9 @@ static gchar *get_param(AXParameter &axparameter, const gchar *name)
     return value;
 }
 
-static gboolean get_param_double(AXParameter &axparameter, const gchar *name, double &val)
+static gboolean get_param_double(const gchar *name, double &val)
 {
-    auto valuestr = get_param(axparameter, name);
+    const auto valuestr = get_param(name);
     if (nullptr == valuestr)
     {
         return FALSE;
@@ -119,9 +119,9 @@ static gboolean get_param_double(AXParameter &axparameter, const gchar *name, do
     return TRUE;
 }
 
-static gboolean get_param_int(AXParameter &axparameter, const gchar *name, int &val)
+static gboolean get_param_int(const gchar *name, int &val)
 {
-    auto valuestr = get_param(axparameter, name);
+    const auto valuestr = get_param(name);
     if (nullptr == valuestr)
     {
         return FALSE;
@@ -250,7 +250,7 @@ static void param_callback_double(const gchar *name, const gchar *value, void *d
     }
 
     LOG_I("Update for parameter %s (%s)", name, value);
-    auto lastdot = strrchr(name, '.');
+    const auto lastdot = strrchr(name, '.');
     assert(nullptr != lastdot);
     assert(1 < strlen(name) - strlen(lastdot));
     update_local_param_double(lastdot[1], atof(value));
@@ -268,20 +268,21 @@ static void param_callback_int(const gchar *name, const gchar *value, void *data
     }
 
     LOG_I("Update for parameter %s (%s)", name, value);
-    auto lastdot = strrchr(name, '.');
+    const auto lastdot = strrchr(name, '.');
     assert(nullptr != lastdot);
     assert(1 < strlen(name) - strlen(lastdot));
     update_local_param_int(lastdot[1], atoi(value));
 }
 
-static gboolean setup_param(AXParameter &axparameter, const gchar *name, AXParameterCallback callbackfn)
+static gboolean setup_param(const gchar *name, AXParameterCallback callbackfn)
 {
+    assert(nullptr != axparameter);
     GError *error = nullptr;
 
     assert(nullptr != name);
     assert(nullptr != callbackfn);
 
-    if (!ax_parameter_register_callback(&axparameter, name, callbackfn, &axparameter, &error))
+    if (!ax_parameter_register_callback(axparameter, name, callbackfn, axparameter, &error))
     {
         LOG_E("%s/%s: failed to register %s callback", __FILE__, __FUNCTION__, name);
         if (nullptr != error)
@@ -295,15 +296,15 @@ static gboolean setup_param(AXParameter &axparameter, const gchar *name, AXParam
     return TRUE;
 }
 
-static gboolean setup_param_double(AXParameter &axparameter, const gchar *name, AXParameterCallback callbackfn)
+static gboolean setup_param_double(const gchar *name, AXParameterCallback callbackfn)
 {
-    if (!setup_param(axparameter, name, callbackfn))
+    if (!setup_param(name, callbackfn))
     {
         return FALSE;
     }
 
     double val;
-    if (!get_param_double(axparameter, name, val))
+    if (!get_param_double(name, val))
     {
         LOG_E("%s/%s: Failed to get initial value for %s", __FILE__, __FUNCTION__, name);
         return FALSE;
@@ -315,15 +316,15 @@ static gboolean setup_param_double(AXParameter &axparameter, const gchar *name, 
     return TRUE;
 }
 
-static gboolean setup_param_int(AXParameter &axparameter, const gchar *name, AXParameterCallback callbackfn)
+static gboolean setup_param_int(const gchar *name, AXParameterCallback callbackfn)
 {
-    if (!setup_param(axparameter, name, callbackfn))
+    if (!setup_param(name, callbackfn))
     {
         return FALSE;
     }
 
     int val;
-    if (!get_param_int(axparameter, name, val))
+    if (!get_param_int(name, val))
     {
         LOG_E("%s/%s: Failed to get initial value for %s", __FILE__, __FUNCTION__, name);
         return FALSE;
@@ -368,10 +369,8 @@ static gboolean imageanalysis(gpointer data)
             color.val[R],
             color.val[G],
             color.val[B]);
-        assert(nullptr != axparameter);
-        if (!set_param_double(*axparameter, "ColorB", color.val[B], FALSE) ||
-            !set_param_double(*axparameter, "ColorG", color.val[G], FALSE) ||
-            !set_param_double(*axparameter, "ColorR", color.val[R], TRUE))
+        if (!set_param_double("ColorB", color.val[B], FALSE) || !set_param_double("ColorG", color.val[G], FALSE) ||
+            !set_param_double("ColorR", color.val[R], TRUE))
         {
             LOG_E("%s/%s: Failed to set picked color", __FILE__, __FUNCTION__);
         }
@@ -413,7 +412,7 @@ static gboolean imageanalysis(gpointer data)
     return TRUE;
 }
 
-static gboolean initimageanalysis(AXParameter &axparameter, const unsigned int w, const unsigned int h)
+static gboolean initimageanalysis(const unsigned int w, const unsigned int h)
 {
     // chooseStreamResolution gets the least resource intensive stream
     // that exceeds or equals the desired resolution specified above
@@ -430,14 +429,14 @@ static gboolean initimageanalysis(AXParameter &axparameter, const unsigned int w
     GError *error = nullptr;
     char param[128];
     snprintf(param, 127, "%u", streamWidth);
-    if (!ax_parameter_set(&axparameter, "Width", param, TRUE, &error))
+    if (!ax_parameter_set(axparameter, "Width", param, TRUE, &error))
     {
         LOG_E("%s/%s: Failed to update Width", __FILE__, __FUNCTION__);
         g_error_free(error);
         return FALSE;
     }
     snprintf(param, 127, "%u", streamHeight);
-    if (!ax_parameter_set(&axparameter, "Height", param, TRUE, &error))
+    if (!ax_parameter_set(axparameter, "Height", param, TRUE, &error))
     {
         LOG_E("%s/%s: Failed to update Height", __FILE__, __FUNCTION__);
         g_error_free(error);
@@ -470,86 +469,15 @@ static gboolean initimageanalysis(AXParameter &axparameter, const unsigned int w
     return TRUE;
 }
 
-static void write_error_response(GDataOutputStream &dos, const int statuscode, const char *statusname, const char *msg)
+static gboolean pickcurrent_cb()
 {
-    ostringstream ss;
-    ss << "Status: " << statuscode << " " << statusname << "\r\n"
-       << "Content-Type: text/html\r\n"
-       << "\r\n"
-       << "<HTML><HEAD><TITLE>" << statuscode << " " << statusname << "</TITLE></HEAD>\n"
-       << "<BODY><H1>" << statuscode << " " << statusname << "</H1>\n"
-       << msg << "\n"
-       << "</BODY></HTML>\n";
-
-    g_data_output_stream_put_string(&dos, ss.str().c_str(), nullptr, nullptr);
+    pickcurrent = true;
+    return imageanalysis(nullptr);
 }
 
-static void write_bad_request(GDataOutputStream &dos, const char *msg)
+static gboolean get_color_area_value()
 {
-    write_error_response(dos, 400, "Bad Request", msg);
-}
-
-static void write_internal_error(GDataOutputStream &dos, const char *msg)
-{
-    write_error_response(dos, 500, "Internal Server Error", msg);
-}
-
-static void request_handler(
-    const gchar *path,
-    const gchar *method,
-    const gchar *query,
-    GHashTable *params,
-    GOutputStream *output_stream,
-    gpointer user_data)
-{
-    (void)method;
-    (void)query;
-    (void)params;
-    (void)user_data;
-
-    auto dos = g_data_output_stream_new(output_stream);
-    assert(nullptr != dos);
-
-    const char *func = basename(const_cast<char *>(path));
-    if (0 == strcmp("getstatus.cgi", func))
-    {
-        const bool status = opcuaserver.GetColorAreaValue();
-        g_data_output_stream_put_string(dos, "Status: 200 OK\r\n", nullptr, nullptr);
-        g_data_output_stream_put_string(dos, "Content-Type: application/json\r\n\r\n", nullptr, nullptr);
-        ostringstream ss;
-        ss << "{\"status\": " << (status ? "true" : "false") << "}" << endl;
-        g_data_output_stream_put_string(dos, ss.str().c_str(), nullptr, nullptr);
-    }
-    else if (0 == strcmp("pickcurrent.cgi", func))
-    {
-        pickcurrent = true;
-        if (!imageanalysis(nullptr))
-        {
-            write_internal_error(*dos, "Failed to pick current color");
-            goto http_exit;
-        }
-        double blue;
-        double green;
-        double red;
-        assert(nullptr != axparameter);
-        if (!get_param_double(*axparameter, "ColorB", blue) || !get_param_double(*axparameter, "ColorG", green) ||
-            !get_param_double(*axparameter, "ColorR", red))
-        {
-            write_internal_error(*dos, "Inner parameter retrieval error");
-            goto http_exit;
-        }
-        g_data_output_stream_put_string(dos, "Status: 200 OK\r\n", nullptr, nullptr);
-        g_data_output_stream_put_string(dos, "Content-Type: application/json\r\n\r\n", nullptr, nullptr);
-        ostringstream ss;
-        ss << "{\"R\":" << red << ", \"G\":" << green << ", \"B\":" << blue << "}" << endl;
-        g_data_output_stream_put_string(dos, ss.str().c_str(), nullptr, nullptr);
-    }
-    else
-    {
-        write_bad_request(*dos, "Unknown action");
-    }
-http_exit:
-    g_object_unref(dos);
+    return opcuaserver.GetColorAreaValue();
 }
 
 static void signalHandler(int signal_num)
@@ -596,9 +524,9 @@ int main(int argc, char *argv[])
 {
     (void)argc;
 
-    AXHttpHandler *axhttp = nullptr;
     GError *error = nullptr;
-    auto app_name = basename(argv[0]);
+    CgiHandler *cgi_handler = nullptr;
+    const auto app_name = basename(argv[0]);
     openlog(app_name, LOG_PID | LOG_CONS, LOG_USER);
 
     int result = EXIT_SUCCESS;
@@ -620,18 +548,18 @@ int main(int argc, char *argv[])
     }
     LOG_I("%s/%s: ax_parameter_new success", __FILE__, __FUNCTION__);
     // clang-format off
-    if (!setup_param_int(*axparameter, "CenterX", param_callback_int) ||
-        !setup_param_int(*axparameter, "CenterY", param_callback_int) ||
-        !setup_param_double(*axparameter, "ColorB", param_callback_double) ||
-        !setup_param_double(*axparameter, "ColorG", param_callback_double) ||
-        !setup_param_double(*axparameter, "ColorR", param_callback_double) ||
-        !setup_param_int(*axparameter, "Height", param_callback_int) ||
-        !setup_param_int(*axparameter, "MarkerHeight", param_callback_int) ||
-        !setup_param_int(*axparameter, "MarkerShape", param_callback_int) ||
-        !setup_param_int(*axparameter, "MarkerWidth", param_callback_int) ||
-        !setup_param_int(*axparameter, "Port", param_callback_int) ||
-        !setup_param_int(*axparameter, "Tolerance", param_callback_int) ||
-        !setup_param_int(*axparameter, "Width", param_callback_int))
+    if (!setup_param_int("CenterX", param_callback_int) ||
+        !setup_param_int("CenterY", param_callback_int) ||
+        !setup_param_double("ColorB", param_callback_double) ||
+        !setup_param_double("ColorG", param_callback_double) ||
+        !setup_param_double("ColorR", param_callback_double) ||
+        !setup_param_int("Height", param_callback_int) ||
+        !setup_param_int("MarkerHeight", param_callback_int) ||
+        !setup_param_int("MarkerShape", param_callback_int) ||
+        !setup_param_int("MarkerWidth", param_callback_int) ||
+        !setup_param_int("Port", param_callback_int) ||
+        !setup_param_int("Tolerance", param_callback_int) ||
+        !setup_param_int("Width", param_callback_int))
     // clang-format on
     {
         LOG_E("%s/%s: Failed to set up parameters", __FILE__, __FUNCTION__);
@@ -652,7 +580,7 @@ int main(int argc, char *argv[])
     LOG_I("%s/%s: tolerance: %u", __FILE__, __FUNCTION__, tolerance);
 
     // Initialize image analysis
-    if (!initimageanalysis(*axparameter, 640, 360))
+    if (!initimageanalysis(640, 360))
     {
         LOG_E("%s/%s: Failed to init image analysis", __FILE__, __FUNCTION__);
         result = EXIT_FAILURE;
@@ -668,10 +596,10 @@ int main(int argc, char *argv[])
     }
 
     // Add means to get value through HTTP too
-    axhttp = ax_http_handler_new(request_handler, &pickcurrent);
-    if (nullptr == axhttp)
+    cgi_handler = new CgiHandler(get_color_area_value, get_param_double, pickcurrent_cb);
+    if (nullptr == cgi_handler)
     {
-        LOG_E("%s/%s: Failed to set up HTTP handler", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed to set up CGI handler", __FILE__, __FUNCTION__);
         result = EXIT_FAILURE;
         goto exit_param;
     }
@@ -683,7 +611,7 @@ int main(int argc, char *argv[])
 
     // Cleanup
     LOG_I("Shutdown ...");
-    ax_http_handler_free(axhttp);
+    delete cgi_handler;
     g_main_loop_unref(loop);
     if (nullptr != provider)
     {
