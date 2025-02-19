@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023, Axis Communications AB, Lund, Sweden
+ * Copyright (C) 2025, Axis Communications AB, Lund, Sweden
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,11 +24,11 @@
 #include <string>
 #include <syslog.h>
 
-#include "colorarea.hpp"
+#include "ColorArea.hpp"
+#include "EventHandler.hpp"
+#include "ImageProvider.hpp"
+#include "OpcUaServer.hpp"
 #include "common.hpp"
-#include "evhandler.hpp"
-#include "imgprovider.hpp"
-#include "opcuaserver.hpp"
 
 using namespace cv;
 using namespace std;
@@ -47,7 +47,7 @@ static GMainLoop *loop = nullptr;
 
 static mutex mtx;
 
-static AxEventHandler evhandler;
+static EventHandler evhandler;
 static AXParameter *axparameter = nullptr;
 static Point center_point;
 static Scalar color;
@@ -58,7 +58,7 @@ static uint8_t tolerance;
 static ColorArea *colorarea = nullptr;
 static OpcUaServer opcuaserver;
 
-static ImgProvider *provider = nullptr;
+static ImageProvider *provider = nullptr;
 static Mat nv12_mat;
 
 static gboolean set_param(AXParameter &axparameter, const gchar *name, const gchar &value, gboolean do_sync = TRUE)
@@ -340,7 +340,7 @@ static gboolean imageanalysis(gpointer data)
     (void)data;
     // Get the latest NV12 image frame from VDO using the imageprovider
     assert(nullptr != provider);
-    VdoBuffer *buf = ImgProvider::GetLastFrameBlocking(*provider);
+    VdoBuffer *buf = ImageProvider::GetLastFrameBlocking(*provider);
     if (!buf)
     {
         LOG_I("%s/%s: No more frames available, exiting", __FILE__, __FUNCTION__);
@@ -408,7 +408,7 @@ static gboolean imageanalysis(gpointer data)
     mtx.unlock();
 
     // Release the VDO frame buffer
-    ImgProvider::ReturnFrame(*provider, *buf);
+    ImageProvider::ReturnFrame(*provider, *buf);
 
     return TRUE;
 }
@@ -419,7 +419,7 @@ static gboolean initimageanalysis(AXParameter &axparameter, const unsigned int w
     // that exceeds or equals the desired resolution specified above
     unsigned int streamWidth = 0;
     unsigned int streamHeight = 0;
-    if (!ImgProvider::ChooseStreamResolution(w, h, streamWidth, streamHeight))
+    if (!ImageProvider::ChooseStreamResolution(w, h, streamWidth, streamHeight))
     {
         LOG_E("%s/%s: Failed choosing stream resolution", __FILE__, __FUNCTION__);
         return FALSE;
@@ -445,20 +445,20 @@ static gboolean initimageanalysis(AXParameter &axparameter, const unsigned int w
     }
 
     LOG_I("Creating VDO image provider and creating stream %d x %d", streamWidth, streamHeight);
-    provider = new ImgProvider(streamWidth, streamHeight, 2, VDO_FORMAT_YUV);
+    provider = new ImageProvider(streamWidth, streamHeight, 2, VDO_FORMAT_YUV);
     if (!provider)
     {
-        LOG_E("%s/%s: Failed to create ImgProvider", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed to create ImageProvider", __FILE__, __FUNCTION__);
         return FALSE;
     }
-    if (!provider->InitImgProvider())
+    if (!provider->InitImageProvider())
     {
-        LOG_E("%s/%s: Failed to init ImgProvider", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed to init ImageProvider", __FILE__, __FUNCTION__);
         return FALSE;
     }
 
     LOG_I("Start fetching video frames from VDO");
-    if (!ImgProvider::StartFrameFetch(*provider))
+    if (!ImageProvider::StartFrameFetch(*provider))
     {
         LOG_E("%s/%s: Failed to fetch frames from VDO", __FILE__, __FUNCTION__);
         return FALSE;
@@ -561,7 +561,7 @@ static void signalHandler(int signal_num)
     case SIGINT:
         if (nullptr != provider)
         {
-            ImgProvider::StopFrameFetch(*provider);
+            ImageProvider::StopFrameFetch(*provider);
         }
         g_main_loop_quit(loop);
         break;
@@ -595,11 +595,10 @@ static bool initializeSignalHandler(void)
 int main(int argc, char *argv[])
 {
     (void)argc;
-    (void)argv;
 
     AXHttpHandler *axhttp = nullptr;
     GError *error = nullptr;
-    const char *app_name = "opcuacolorchecker";
+    auto app_name = basename(argv[0]);
     openlog(app_name, LOG_PID | LOG_CONS, LOG_USER);
 
     int result = EXIT_SUCCESS;

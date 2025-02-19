@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023, Axis Communications AB, Lund, Sweden
+ * Copyright (C) 2025, Axis Communications AB, Lund, Sweden
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,18 +20,21 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <vdo-channel.h>
 
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#include <vdo-channel.h>
+#include <vdo-map.h>
+#pragma GCC diagnostic pop
+
+#include "ImageProvider.hpp"
 #include "common.hpp"
-#include "imgprovider.hpp"
-#include "vdo-map.h"
 
 #define VDO_CHANNEL (1)
 
 /**
  * brief Constructor
  *
- * Make sure to check ImgProvider streamWidth and streamHeight members to
+ * Make sure to check ImageProvider streamWidth and streamHeight members to
  * find resolution of the created stream. These numbers might not match the
  * requested resolution depending on platform properties.
  *
@@ -40,55 +43,56 @@
  * param numFrames Number of fetched frames to keep.
  * param vdoFormat Image format to be output by stream.
  */
-ImgProvider::ImgProvider(
+ImageProvider::ImageProvider(
     const unsigned int width,
     const unsigned int height,
     const unsigned int numFrames,
     const VdoFormat format)
-    : shutdown(false), initialized(false), width(width), height(height), num_app_frames(numFrames), vdo_format(format)
+    : shutdown_(false), initialized_(false), width_(width), height_(height), num_app_frames_(numFrames),
+      vdo_format_(format)
 {
 }
 
-ImgProvider::~ImgProvider()
+ImageProvider::~ImageProvider()
 {
-    ImgProvider::ReleaseVdoBuffers(*this);
+    ImageProvider::ReleaseVdoBuffers(*this);
 
-    pthread_mutex_destroy(&frame_mutex);
-    pthread_cond_destroy(&frame_deliver_cond);
+    pthread_mutex_destroy(&frame_mutex_);
+    pthread_cond_destroy(&frame_deliver_cond_);
 
-    if (delivered_frames)
+    if (delivered_frames_)
     {
-        g_queue_free(delivered_frames);
+        g_queue_free(delivered_frames_);
     }
-    if (processed_frames)
+    if (processed_frames_)
     {
-        g_queue_free(processed_frames);
+        g_queue_free(processed_frames_);
     }
 }
 
-bool ImgProvider::InitImgProvider()
+bool ImageProvider::InitImageProvider()
 {
-    if (pthread_mutex_init(&frame_mutex, nullptr))
+    if (pthread_mutex_init(&frame_mutex_, nullptr))
     {
         LOG_E("%s: Unable to initialize mutex: %s", __func__, strerror(errno));
         return false;
     }
 
-    if (pthread_cond_init(&frame_deliver_cond, nullptr))
+    if (pthread_cond_init(&frame_deliver_cond_, nullptr))
     {
         LOG_E("%s: Unable to initialize condition variable: %s", __func__, strerror(errno));
         goto error_mtx;
     }
 
-    delivered_frames = g_queue_new();
-    if (!delivered_frames)
+    delivered_frames_ = g_queue_new();
+    if (!delivered_frames_)
     {
         LOG_E("%s: Unable to create delivered_frames queue!", __func__);
         goto error_cond;
     }
 
-    processed_frames = g_queue_new();
-    if (!processed_frames)
+    processed_frames_ = g_queue_new();
+    if (!processed_frames_)
     {
         LOG_E("%s: Unable to create processed_frames queue!", __func__);
         goto error_cond;
@@ -100,15 +104,15 @@ bool ImgProvider::InitImgProvider()
         goto error_cond;
     }
 
-    initialized = true;
+    initialized_ = true;
     goto exit;
 
 error_cond:
-    pthread_cond_destroy(&frame_deliver_cond);
+    pthread_cond_destroy(&frame_deliver_cond_);
 error_mtx:
-    pthread_mutex_destroy(&frame_mutex);
+    pthread_mutex_destroy(&frame_mutex_);
 exit:
-    return initialized;
+    return initialized_;
 }
 
 /**
@@ -124,7 +128,7 @@ exit:
  * param chosenHeight Selected image height.
  * return False if any errors occur, otherwise true.
  */
-bool ImgProvider::ChooseStreamResolution(
+bool ImageProvider::ChooseStreamResolution(
     const unsigned int reqWidth,
     const unsigned int reqHeight,
     unsigned int &chosenWidth,
@@ -214,9 +218,9 @@ bool ImgProvider::ChooseStreamResolution(
  * param provider ImageProvider reference.
  * return False if any errors occur, otherwise true.
  */
-bool ImgProvider::CreateStream(ImgProvider &provider)
+bool ImageProvider::CreateStream(ImageProvider &provider)
 {
-    assert(!provider.initialized);
+    assert(!provider.initialized_);
     VdoMap *vdoMap = vdo_map_new();
     GError *error = nullptr;
     bool ret = false;
@@ -228,38 +232,38 @@ bool ImgProvider::CreateStream(ImgProvider &provider)
     }
 
     vdo_map_set_uint32(vdoMap, "channel", VDO_CHANNEL);
-    vdo_map_set_uint32(vdoMap, "format", provider.vdo_format);
-    vdo_map_set_uint32(vdoMap, "width", provider.width);
-    vdo_map_set_uint32(vdoMap, "height", provider.height);
+    vdo_map_set_uint32(vdoMap, "format", provider.vdo_format_);
+    vdo_map_set_uint32(vdoMap, "width", provider.width_);
+    vdo_map_set_uint32(vdoMap, "height", provider.height_);
     // We will use buffer_alloc() and buffer_unref() calls.
     vdo_map_set_uint32(vdoMap, "buffer.strategy", VDO_BUFFER_STRATEGY_EXPLICIT);
 
     LOG_I("Dump of vdo stream settings map =====");
     vdo_map_dump(vdoMap);
 
-    VdoStream *vdo_stream = vdo_stream_new(vdoMap, nullptr, &error);
-    if (nullptr == vdo_stream)
+    VdoStream *vdo_stream_ = vdo_stream_new(vdoMap, nullptr, &error);
+    if (nullptr == vdo_stream_)
     {
         LOG_E("%s: Failed creating VDO stream (%s)", __func__, (error != nullptr) ? error->message : "N/A");
         goto create_exit;
     }
 
-    if (!ImgProvider::AllocateVdoBuffers(provider, *vdo_stream))
+    if (!ImageProvider::AllocateVdoBuffers(provider, *vdo_stream_))
     {
         LOG_E("%s: Failed setting up VDO buffers!", __func__);
-        ImgProvider::ReleaseVdoBuffers(provider);
+        ImageProvider::ReleaseVdoBuffers(provider);
         goto create_exit;
     }
 
     // Start the actual VDO streaming.
-    if (!vdo_stream_start(vdo_stream, &error))
+    if (!vdo_stream_start(vdo_stream_, &error))
     {
         LOG_E("%s: Failed starting stream: %s", __func__, (error != nullptr) ? error->message : "N/A");
-        ImgProvider::ReleaseVdoBuffers(provider);
+        ImageProvider::ReleaseVdoBuffers(provider);
         goto create_exit;
     }
 
-    provider.vdo_stream = vdo_stream;
+    provider.vdo_stream_ = vdo_stream_;
 
     ret = true;
 
@@ -277,16 +281,16 @@ create_exit:
  * param vdoStream VDO stream for buffer allocation.
  * return False if any errors occur, otherwise true.
  */
-bool ImgProvider::AllocateVdoBuffers(ImgProvider &provider, VdoStream &vdoStream)
+bool ImageProvider::AllocateVdoBuffers(ImageProvider &provider, VdoStream &vdoStream)
 {
-    assert(!provider.initialized);
+    assert(!provider.initialized_);
     GError *error = nullptr;
     bool ret = false;
 
     for (size_t i = 0; i < NUM_VDO_BUFFERS; i++)
     {
-        provider.vdo_buffers[i] = vdo_stream_buffer_alloc(&vdoStream, nullptr, &error);
-        if (provider.vdo_buffers[i] == nullptr)
+        provider.vdo_buffers_[i] = vdo_stream_buffer_alloc(&vdoStream, nullptr, &error);
+        if (provider.vdo_buffers_[i] == nullptr)
         {
             LOG_E(
                 "%s/%s: Failed creating VDO buffer: %s",
@@ -299,7 +303,7 @@ bool ImgProvider::AllocateVdoBuffers(ImgProvider &provider, VdoStream &vdoStream
         // Make a 'speculative' vdo_buffer_get_data() call to trigger a
         // memory mapping of the buffer. The mapping is cached in the VDO
         // implementation.
-        void *dummyPtr = vdo_buffer_get_data(provider.vdo_buffers[i]);
+        void *dummyPtr = vdo_buffer_get_data(provider.vdo_buffers_[i]);
         if (!dummyPtr)
         {
             LOG_E(
@@ -310,7 +314,7 @@ bool ImgProvider::AllocateVdoBuffers(ImgProvider &provider, VdoStream &vdoStream
             goto error_exit;
         }
 
-        if (!vdo_stream_buffer_enqueue(&vdoStream, provider.vdo_buffers[i], &error))
+        if (!vdo_stream_buffer_enqueue(&vdoStream, provider.vdo_buffers_[i], &error))
         {
             LOG_E("%s: Failed enqueue VDO buffer: %s", __func__, (error != nullptr) ? error->message : "N/A");
             goto error_exit;
@@ -328,20 +332,20 @@ error_exit:
 /**
  * brief Release references to the buffers we allocated in CreateStream().
  *
- * param provider Reference to ImgProvider owning the buffer references.
+ * param provider Reference to ImageProvider owning the buffer references.
  */
-void ImgProvider::ReleaseVdoBuffers(ImgProvider &provider)
+void ImageProvider::ReleaseVdoBuffers(ImageProvider &provider)
 {
-    if (nullptr == provider.vdo_stream)
+    if (nullptr == provider.vdo_stream_)
     {
         return;
     }
 
     for (size_t i = 0; i < NUM_VDO_BUFFERS; i++)
     {
-        if (nullptr != provider.vdo_buffers[i])
+        if (nullptr != provider.vdo_buffers_[i])
         {
-            vdo_stream_buffer_unref(provider.vdo_stream, &provider.vdo_buffers[i], nullptr);
+            vdo_stream_buffer_unref(provider.vdo_stream_, &provider.vdo_buffers_[i], nullptr);
         }
     }
 }
@@ -349,48 +353,48 @@ void ImgProvider::ReleaseVdoBuffers(ImgProvider &provider)
 /**
  * brief Get the most recent frame the thread has fetched from VDO.
  *
- * param provider Reference to an ImgProvider fetching frames.
+ * param provider Reference to an ImageProvider fetching frames.
  * return Pointer to an image buffer on success, otherwise nullptr.
  */
-VdoBuffer *ImgProvider::GetLastFrameBlocking(ImgProvider &provider)
+VdoBuffer *ImageProvider::GetLastFrameBlocking(ImageProvider &provider)
 {
-    assert(provider.initialized);
+    assert(provider.initialized_);
     VdoBuffer *returnBuf = nullptr;
-    pthread_mutex_lock(&provider.frame_mutex);
+    pthread_mutex_lock(&provider.frame_mutex_);
 
-    while (g_queue_get_length(provider.delivered_frames) < 1)
+    while (g_queue_get_length(provider.delivered_frames_) < 1)
     {
-        if (pthread_cond_wait(&provider.frame_deliver_cond, &provider.frame_mutex))
+        if (pthread_cond_wait(&provider.frame_deliver_cond_, &provider.frame_mutex_))
         {
             LOG_E("%s: Failed to wait on condition: %s", __func__, strerror(errno));
             goto error_exit;
         }
     }
 
-    returnBuf = (VdoBuffer *)g_queue_pop_tail(provider.delivered_frames);
+    returnBuf = (VdoBuffer *)g_queue_pop_tail(provider.delivered_frames_);
 
 error_exit:
-    pthread_mutex_unlock(&provider.frame_mutex);
+    pthread_mutex_unlock(&provider.frame_mutex_);
 
     return returnBuf;
 }
 
-void ImgProvider::ReturnFrame(ImgProvider &provider, VdoBuffer &buffer)
+void ImageProvider::ReturnFrame(ImageProvider &provider, VdoBuffer &buffer)
 {
-    assert(provider.initialized);
-    pthread_mutex_lock(&provider.frame_mutex);
+    assert(provider.initialized_);
+    pthread_mutex_lock(&provider.frame_mutex_);
 
-    g_queue_push_tail(provider.processed_frames, &buffer);
+    g_queue_push_tail(provider.processed_frames_, &buffer);
 
-    pthread_mutex_unlock(&provider.frame_mutex);
+    pthread_mutex_unlock(&provider.frame_mutex_);
 }
 
-void ImgProvider::RunLoopIteration()
+void ImageProvider::RunLoopIteration()
 {
-    assert(initialized);
+    assert(initialized_);
     GError *error = nullptr;
     // Block waiting for a frame from VDO
-    VdoBuffer *newBuffer = vdo_stream_get_buffer(vdo_stream, &error);
+    VdoBuffer *newBuffer = vdo_stream_get_buffer(vdo_stream_, &error);
 
     if (!newBuffer)
     {
@@ -403,32 +407,32 @@ void ImgProvider::RunLoopIteration()
         g_clear_error(&error);
         return;
     }
-    pthread_mutex_lock(&frame_mutex);
+    pthread_mutex_lock(&frame_mutex_);
 
-    g_queue_push_tail(delivered_frames, newBuffer);
+    g_queue_push_tail(delivered_frames_, newBuffer);
 
     VdoBuffer *oldBuffer = nullptr;
 
     // First check if there are any frames returned from app
     // processing
-    if (g_queue_get_length(processed_frames) > 0)
+    if (g_queue_get_length(processed_frames_) > 0)
     {
-        oldBuffer = (VdoBuffer *)g_queue_pop_head(processed_frames);
+        oldBuffer = (VdoBuffer *)g_queue_pop_head(processed_frames_);
     }
     else
     {
         // Client specifies the number-of-recent-frames it needs to collect
         // in one chunk (numAppFrames). Thus only enqueue buffers back to
         // VDO if we have collected more buffers than numAppFrames.
-        if (g_queue_get_length(delivered_frames) > num_app_frames)
+        if (g_queue_get_length(delivered_frames_) > num_app_frames_)
         {
-            oldBuffer = (VdoBuffer *)g_queue_pop_head(delivered_frames);
+            oldBuffer = (VdoBuffer *)g_queue_pop_head(delivered_frames_);
         }
     }
 
     if (oldBuffer)
     {
-        if (!vdo_stream_buffer_enqueue(vdo_stream, oldBuffer, &error))
+        if (!vdo_stream_buffer_enqueue(vdo_stream_, oldBuffer, &error))
         {
             // Fail but we continue anyway hoping for the best.
             syslog(
@@ -440,21 +444,21 @@ void ImgProvider::RunLoopIteration()
         }
     }
     g_object_unref(newBuffer); // Release the ref from vdo_stream_get_buffer
-    pthread_cond_signal(&frame_deliver_cond);
-    pthread_mutex_unlock(&frame_mutex);
+    pthread_cond_signal(&frame_deliver_cond_);
+    pthread_mutex_unlock(&frame_mutex_);
 }
 
 /**
  * brief Starting point function for the thread fetching frames.
  *
  * Responsible for fetching buffers/frames from VDO and re-enqueue buffers back
- * to VDO when they are not needed by the application. The ImgProvider always
+ * to VDO when they are not needed by the application. The ImageProvider always
  * keeps one or several of the most recent frames available in the application.
  * There are two queues involved: delivered_frames and processed_frames.
  * - delivered_frames are frames delivered from VDO and
  *   not processed by the client.
  * - processed_frames are frames that the client has consumed and handed
- *   back to the ImgProvider.
+ *   back to the ImageProvider.
  * The thread works roughly like this:
  * 1. The thread blocks on vdo_stream_get_buffer() until VDO deliver a new
  * frame.
@@ -469,26 +473,26 @@ void ImgProvider::RunLoopIteration()
  *    fetch. If there are more than numAppFrames in delivered_frames we
  *    pick the first buffer (oldest) in the list and enqueue it to VDO.
 
- * param data Pointer to ImgProvider owning thread.
+ * param data Pointer to ImageProvider owning thread.
  * return Pointer to unused return data.
  */
-void *ImgProvider::threadEntry(void *data)
+void *ImageProvider::threadEntry(void *data)
 {
     assert(nullptr != data);
-    ImgProvider *provider = (ImgProvider *)data;
-    assert(provider->initialized);
+    ImageProvider *provider = (ImageProvider *)data;
+    assert(provider->initialized_);
 
-    while (!provider->shutdown)
+    while (!provider->shutdown_)
     {
         provider->RunLoopIteration();
     }
     return nullptr;
 }
 
-bool ImgProvider::StartFrameFetch(ImgProvider &provider)
+bool ImageProvider::StartFrameFetch(ImageProvider &provider)
 {
-    assert(provider.initialized);
-    if (pthread_create(&provider.fetcher_thread, nullptr, provider.threadEntry, &provider))
+    assert(provider.initialized_);
+    if (pthread_create(&provider.fetcher_thread_, nullptr, provider.threadEntry, &provider))
     {
         LOG_E("%s: Failed to start thread fetching frames from vdo: %s", __func__, strerror(errno));
         return false;
@@ -497,11 +501,11 @@ bool ImgProvider::StartFrameFetch(ImgProvider &provider)
     return true;
 }
 
-bool ImgProvider::StopFrameFetch(ImgProvider &provider)
+bool ImageProvider::StopFrameFetch(ImageProvider &provider)
 {
-    provider.shutdown = true;
+    provider.shutdown_ = true;
 
-    if (pthread_join(provider.fetcher_thread, nullptr))
+    if (pthread_join(provider.fetcher_thread_, nullptr))
     {
         LOG_E("%s: Failed to join thread fetching frames from vdo: %s", __func__, strerror(errno));
         return false;
