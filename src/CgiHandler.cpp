@@ -20,19 +20,17 @@
 #include <string>
 
 #include "CgiHandler.hpp"
+#include "ColorArea.hpp"
 #include "common.hpp"
 
 using namespace std;
 
-CgiHandler::CgiHandler(
-    gboolean (*GetColorAreaValue)(),
-    gboolean (*GetParamDouble)(const gchar *, double &),
-    gboolean (*PickCurrentCallback)())
-    : GetColorAreaValue_(GetColorAreaValue), GetParamDouble_(GetParamDouble), PickCurrentCallback_(PickCurrentCallback),
+CgiHandler::CgiHandler(cv::Scalar (*GetColor)(), gboolean (*GetColorAreaValue)(), gboolean (*PickCurrentCallback)())
+    : GetColor_(GetColor), GetColorAreaValue_(GetColorAreaValue), PickCurrentCallback_(PickCurrentCallback),
       http_handler_(ax_http_handler_new(this->RequestHandler, this))
 {
+    assert(nullptr != GetColor_);
     assert(nullptr != GetColorAreaValue_);
-    assert(nullptr != GetParamDouble_);
     assert(nullptr != PickCurrentCallback_);
     assert(nullptr != http_handler_);
 }
@@ -109,20 +107,11 @@ void CgiHandler::RequestHandler(
             goto http_exit;
         }
 
-        double blue;
-        double green;
-        double red;
-        assert(nullptr != cgi_handler->GetParamDouble_);
-        if (!cgi_handler->GetParamDouble_("ColorB", blue) || !cgi_handler->GetParamDouble_("ColorG", green) ||
-            !cgi_handler->GetParamDouble_("ColorR", red))
-        {
-            WriteInternalError(*dos, "Inner parameter retrieval error");
-            goto http_exit;
-        }
+        const auto color = cgi_handler->GetColor_();
         g_data_output_stream_put_string(dos, "Status: 200 OK\r\n", nullptr, nullptr);
         g_data_output_stream_put_string(dos, "Content-Type: application/json\r\n\r\n", nullptr, nullptr);
         ostringstream ss;
-        ss << "{\"R\":" << red << ", \"G\":" << green << ", \"B\":" << blue << "}" << endl;
+        ss << "{\"R\":" << color[R] << ", \"G\":" << color[G] << ", \"B\":" << color[B] << "}" << endl;
         g_data_output_stream_put_string(dos, ss.str().c_str(), nullptr, nullptr);
     }
     else

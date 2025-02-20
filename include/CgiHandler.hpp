@@ -14,21 +14,15 @@
  * limitations under the License.
  */
 
-/**
- * This header file handles the vdo part of the application.
- */
-
 #pragma once
 
 #include <axhttp.h>
+#include <opencv2/core/core.hpp>
 
 class CgiHandler
 {
   public:
-    CgiHandler(
-        gboolean (*GetColorAreaValue)(),
-        gboolean (*GetParamDouble)(const gchar *, double &),
-        gboolean (*PickCurrentCallback)());
+    CgiHandler(cv::Scalar (*GetColor)(), gboolean (*GetColorAreaValue)(), gboolean (*PickCurrentCallback)());
     ~CgiHandler();
     static void RequestHandler(
         const gchar *path,
@@ -44,8 +38,8 @@ class CgiHandler
     static void WriteBadRequest(GDataOutputStream &dos, const gchar *msg);
     static void WriteInternalError(GDataOutputStream &dos, const gchar *msg);
 
+    cv::Scalar (*GetColor_)();
     gboolean (*GetColorAreaValue_)();
-    gboolean (*GetParamDouble_)(const gchar *, double &);
     gboolean (*PickCurrentCallback_)();
 
     AXHttpHandler *http_handler_;
