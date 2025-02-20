@@ -59,11 +59,11 @@ class ImageProvider
     static bool StartFrameFetch(ImageProvider &provider);
     static bool StopFrameFetch(ImageProvider &provider);
 
-    /// Keeping track of frames' statuses.
+    // Keeping track of frames' statuses.
     GQueue *delivered_frames_;
     GQueue *processed_frames_;
 
-    /// To support fetching frames asynchonously with VDO.
+    // To support fetching frames asynchonously with VDO.
     pthread_mutex_t frame_mutex_;
     pthread_cond_t frame_deliver_cond_;
     pthread_t fetcher_thread_;
@@ -74,7 +74,7 @@ class ImageProvider
     bool initialized_;
     unsigned int width_;
     unsigned int height_;
-    /// Number of frames to keep in the delivered_frames queue.
+    // Number of frames to keep in the delivered_frames queue.
     unsigned int num_app_frames_;
     // Stream configuration parameters.
     VdoFormat vdo_format_;

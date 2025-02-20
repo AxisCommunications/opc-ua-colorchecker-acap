@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-/**
- * This header file handles the vdo part of the application.
- */
-
 #pragma once
 
 #include <axevent.h>
