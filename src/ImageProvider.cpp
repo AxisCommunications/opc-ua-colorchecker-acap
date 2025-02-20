@@ -144,7 +144,7 @@ bool ImageProvider::ChooseStreamResolution(
         g_clear_object(&channel);
         g_clear_error(&error);
     }
-    auto set = vdo_channel_get_resolutions(channel, nullptr, &error);
+    const auto set = vdo_channel_get_resolutions(channel, nullptr, &error);
     g_clear_object(&channel);
     if (nullptr == set)
     {
@@ -162,7 +162,7 @@ bool ImageProvider::ChooseStreamResolution(
     unsigned int bestResolutionArea = UINT_MAX;
     for (ssize_t i = 0; (gsize)i < set->count; ++i)
     {
-        VdoResolution *res = &set->resolutions[i];
+        const auto res = &set->resolutions[i];
         assert(nullptr != res);
         LOG_I("%s/%s: resolution %zu: (%ux%u)", __FILE__, __FUNCTION__, i, res->width, res->height);
         if ((res->width >= reqWidth) && (res->height >= reqHeight))
@@ -219,7 +219,7 @@ bool ImageProvider::ChooseStreamResolution(
 bool ImageProvider::CreateStream(ImageProvider &provider)
 {
     assert(!provider.initialized_);
-    auto vdoMap = vdo_map_new();
+    const auto vdoMap = vdo_map_new();
     GError *error = nullptr;
     auto ret = false;
 
@@ -239,14 +239,14 @@ bool ImageProvider::CreateStream(ImageProvider &provider)
     LOG_I("Dump of vdo stream settings map =====");
     vdo_map_dump(vdoMap);
 
-    auto vdo_stream_ = vdo_stream_new(vdoMap, nullptr, &error);
-    if (nullptr == vdo_stream_)
+    auto vdo_stream = vdo_stream_new(vdoMap, nullptr, &error);
+    if (nullptr == vdo_stream)
     {
         LOG_E("%s: Failed creating VDO stream (%s)", __func__, (error != nullptr) ? error->message : "N/A");
         goto create_exit;
     }
 
-    if (!ImageProvider::AllocateVdoBuffers(provider, *vdo_stream_))
+    if (!ImageProvider::AllocateVdoBuffers(provider, *vdo_stream))
     {
         LOG_E("%s: Failed setting up VDO buffers!", __func__);
         ImageProvider::ReleaseVdoBuffers(provider);
@@ -254,14 +254,14 @@ bool ImageProvider::CreateStream(ImageProvider &provider)
     }
 
     // Start the actual VDO streaming.
-    if (!vdo_stream_start(vdo_stream_, &error))
+    if (!vdo_stream_start(vdo_stream, &error))
     {
         LOG_E("%s: Failed starting stream: %s", __func__, (error != nullptr) ? error->message : "N/A");
         ImageProvider::ReleaseVdoBuffers(provider);
         goto create_exit;
     }
 
-    provider.vdo_stream_ = vdo_stream_;
+    provider.vdo_stream_ = vdo_stream;
 
     ret = true;
 
@@ -301,7 +301,7 @@ bool ImageProvider::AllocateVdoBuffers(ImageProvider &provider, VdoStream &vdoSt
         // Make a 'speculative' vdo_buffer_get_data() call to trigger a
         // memory mapping of the buffer. The mapping is cached in the VDO
         // implementation.
-        auto dummyPtr = vdo_buffer_get_data(provider.vdo_buffers_[i]);
+        const auto dummyPtr = vdo_buffer_get_data(provider.vdo_buffers_[i]);
         if (nullptr == dummyPtr)
         {
             LOG_E(
@@ -339,7 +339,7 @@ void ImageProvider::ReleaseVdoBuffers(ImageProvider &provider)
         return;
     }
 
-    for (size_t i = 0; i < NUM_VDO_BUFFERS; i++)
+    for (size_t i = 0; NUM_VDO_BUFFERS > i; i++)
     {
         if (nullptr != provider.vdo_buffers_[i])
         {
@@ -392,7 +392,7 @@ void ImageProvider::RunLoopIteration()
     assert(initialized_);
     GError *error = nullptr;
     // Block waiting for a frame from VDO
-    auto newBuffer = vdo_stream_get_buffer(vdo_stream_, &error);
+    const auto newBuffer = vdo_stream_get_buffer(vdo_stream_, &error);
 
     if (nullptr == newBuffer)
     {
@@ -429,9 +429,8 @@ void ImageProvider::RunLoopIteration()
         if (!vdo_stream_buffer_enqueue(vdo_stream_, oldBuffer, &error))
         {
             // Fail but we continue anyway hoping for the best.
-            syslog(
-                LOG_WARNING,
-                "%s: Failed enqueueing buffer to vdo: %s",
+            LOG_I(
+                "%s: WARNING, failed enqueueing buffer to vdo: %s",
                 __func__,
                 (error != nullptr) ? error->message : "N/A");
             g_clear_error(&error);
