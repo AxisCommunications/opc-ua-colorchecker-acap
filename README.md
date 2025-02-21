@@ -6,8 +6,8 @@
 [![GitHub Super-Linter](https://github.com/AxisCommunications/opc-ua-colorchecker-acap/actions/workflows/super-linter.yml/badge.svg)](https://github.com/AxisCommunications/opc-ua-colorchecker-acap/actions/workflows/super-linter.yml)
 
 This repository contains the source code to build a small example
-[ACAP version 3](https://help.axis.com/acap-3-developer-guide)
-application that checks the average color of a selected part of an image,
+[ACAP version 4](https://axiscommunications.github.io/acap-documentation/)
+(native) application that checks the average color of a selected part of an image,
 compares it to a reference color and a certain tolerance and outputs
 TRUE/FALSE through an
 [OPC UA](https://en.wikipedia.org/wiki/OPC_Unified_Architecture)
@@ -77,7 +77,7 @@ If you do have Docker but no `make` on your system:
 ```sh
 # 32-bit ARM, e.g. ARTPEC-6- and ARTPEC-7-based devices
 DOCKER_BUILDKIT=1 docker build --build-arg ARCH=armv7hf -o type=local,dest=. .
-# 64-bit ARM, e.g. ARTPEC-8-based devices
+# 64-bit ARM, e.g. ARTPEC-8 and ARTPEC-9-based devices
 DOCKER_BUILDKIT=1 docker build --build-arg ARCH=aarch64 -o type=local,dest=. .
 ```
 
@@ -96,7 +96,7 @@ or
 ```sh
 # 32-bit ARM, e.g. ARTPEC-6- and ARTPEC-7-based devices
 DOCKER_BUILDKIT=1 docker build --build-arg DEBUG_WRITE=y --build-arg ARCH=armv7hf -o type=local,dest=. .
-# 64-bit ARM, e.g. ARTPEC-8-based devices
+# 64-bit ARM, e.g. ARTPEC-8 and ARTPEC-9-based devices
 DOCKER_BUILDKIT=1 docker build --build-arg DEBUG_WRITE=y --build-arg ARCH=aarch64 -o type=local,dest=. .
 ```
 
