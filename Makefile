@@ -2,20 +2,22 @@ TARGET = opcuacolorchecker
 OBJECTS = $(wildcard $(CURDIR)/src/*.cpp)
 RM ?= rm -f
 
-PKGS = gio-2.0 gio-unix-2.0 vdostream open62541 axevent axhttp axparameter
+SDK_PKGS = axevent axparameter fcgi gio-2.0 gio-unix-2.0 open62541 vdostream
+OWN_PKGS = opencv4 open62541
 
-CXXFLAGS += -Os -pipe -std=c++11 -Wall -Werror -Wextra
-CXXFLAGS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --cflags-only-I $(PKGS))
-LDLIBS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs $(PKGS))
+CXXFLAGS += -Os -pipe -std=c++20 -Wall -Werror -Wextra
+CXXFLAGS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --cflags-only-I $(SDK_PKGS))
+CXXFLAGS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) PKG_CONFIG_SYSROOT_DIR= pkg-config --cflags-only-I $(OWN_PKGS))
+LDLIBS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config --libs $(SDK_PKGS))
+LDLIBS += $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) PKG_CONFIG_SYSROOT_DIR= pkg-config --libs $(SDK_PKGS) $(OWN_PKGS))
 
-CXXFLAGS += -I$(SDKTARGETSYSROOT)/usr/include/opencv4 -I$(CURDIR)/include
+CXXFLAGS += -I$(CURDIR)/include
 LDFLAGS = -L./lib -Wl,--no-as-needed,-rpath,'$$ORIGIN/lib' -flto=auto
-LDLIBS += -lm -lopencv_core -lopencv_imgproc -lopencv_video -lpthread
+#LDLIBS += -lm -lpthread
 
 # Set DEBUG_WRITE to write debug images to storage
 ifneq ($(DEBUG_WRITE),)
 CXXFLAGS += -DDEBUG_WRITE
-LDLIBS += -lopencv_imgcodecs
 DOCKER_ARGS += --build-arg DEBUG_WRITE=$(DEBUG_WRITE)
 endif
 
@@ -24,14 +26,14 @@ endif
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) $^ -o $@ && \
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS) $(LDLIBS) && \
 	$(STRIP) --strip-unneeded $@
 
-# docker build container targets
+# Docker build container targets
 %.eap:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_ARGS) --build-arg ARCH=$(*F) -o type=local,dest=. "$(CURDIR)"
 
-dockerbuild: armv7hf.eap aarch64.eap
+dockerbuild: aarch64.eap armv7hf.eap
 
 clean:
 	$(RM) $(TARGET) *.eap* *_LICENSE.txt pa*.conf

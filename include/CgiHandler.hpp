@@ -16,31 +16,32 @@
 
 #pragma once
 
-#include <axhttp.h>
+#include <fcgi_stdio.h>
+#include <glib.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
 #include <opencv2/core/core.hpp>
+#pragma GCC diagnostic pop
+#include <thread>
 
 class CgiHandler
 {
   public:
     CgiHandler(cv::Scalar (*GetColor)(), gboolean (*GetColorAreaValue)(), gboolean (*PickCurrentCallback)());
     ~CgiHandler();
-    static void RequestHandler(
-        const gchar *path,
-        const gchar *method,
-        const gchar *query,
-        GHashTable *params,
-        GOutputStream *output_stream,
-        gpointer user_data);
 
   private:
-    static void
-    WriteErrorResponse(GDataOutputStream &dos, const guint32 statuscode, const gchar *statusname, const gchar *msg);
-    static void WriteBadRequest(GDataOutputStream &dos, const gchar *msg);
-    static void WriteInternalError(GDataOutputStream &dos, const gchar *msg);
+    void Run();
+    gboolean HandleFcgiRequest();
+
+    static void WriteResponse(FCGX_Stream &stream, const guint32 status_code, const gchar *mimetype, const gchar *msg);
 
     cv::Scalar (*GetColor_)();
     gboolean (*GetColorAreaValue_)();
     gboolean (*PickCurrentCallback_)();
 
-    AXHttpHandler *http_handler_;
+    FCGX_Request request_;
+    bool running_;
+    int sock_;
+    std::jthread worker_;
 };

@@ -15,109 +15,133 @@
  */
 
 #include <assert.h>
-#include <ostream>
-#include <sstream>
+#include <filesystem>
+#include <format>
 #include <string>
+#include <sys/stat.h>
 
 #include "CgiHandler.hpp"
 #include "ColorArea.hpp"
 #include "common.hpp"
 
-using namespace std;
+#define FCGI_SOCKET_NAME "FCGI_SOCKET_NAME"
+
+#define MIME_JSON "application/json"
+#define MIME_TEXT "text/plain"
 
 CgiHandler::CgiHandler(cv::Scalar (*GetColor)(), gboolean (*GetColorAreaValue)(), gboolean (*PickCurrentCallback)())
     : GetColor_(GetColor), GetColorAreaValue_(GetColorAreaValue), PickCurrentCallback_(PickCurrentCallback),
-      http_handler_(ax_http_handler_new(this->RequestHandler, this))
+      running_(false)
 {
     assert(nullptr != GetColor_);
     assert(nullptr != GetColorAreaValue_);
     assert(nullptr != PickCurrentCallback_);
-    assert(nullptr != http_handler_);
+
+    LOG_I("Setting up FastCGI ...");
+    auto socket_path = getenv(FCGI_SOCKET_NAME);
+    if (nullptr == socket_path)
+    {
+        LOG_E("Failed to get environment variable FCGI_SOCKET_NAME");
+        assert(false);
+    }
+
+    LOG_I("Using socket path %s", socket_path);
+    if (0 != FCGX_Init())
+    {
+        LOG_E("FCGX_Init failed");
+        assert(false);
+    }
+
+    sock_ = FCGX_OpenSocket(socket_path, 5);
+    chmod(socket_path, S_IRWXU | S_IRWXG | S_IRWXO);
+    if (0 != FCGX_InitRequest(&request_, sock_, 0))
+    {
+        LOG_E("FCGX_InitRequest failed");
+        assert(false);
+    }
+
+    LOG_I("Set up FastCGI for %s, start handling incoming CGI requests ...", socket_path);
+    worker_ = std::jthread(&CgiHandler::Run, this);
 }
 
 CgiHandler::~CgiHandler()
 {
-    LOG_I("%s/%s: Free http handler ...", __FILE__, __FUNCTION__);
-    assert(nullptr != http_handler_);
-    ax_http_handler_free(http_handler_);
+    // std::jthread automatically joins, so we only need to set running_ to false
+    LOG_I("Stop CGI handling ...");
+    running_ = false;
+    LOG_I("Shutting down FastCGI ...");
+    close(sock_);
 }
 
-void CgiHandler::WriteErrorResponse(
-    GDataOutputStream &dos,
-    const guint32 statuscode,
-    const gchar *statusname,
-    const gchar *msg)
+void CgiHandler::Run()
 {
-    ostringstream ss;
-    ss << "Status: " << statuscode << " " << statusname << "\r\n"
-       << "Content-Type: text/html\r\n"
-       << "\r\n"
-       << "<HTML><HEAD><TITLE>" << statuscode << " " << statusname << "</TITLE></HEAD>\n"
-       << "<BODY><H1>" << statuscode << " " << statusname << "</H1>\n"
-       << msg << "\n"
-       << "</BODY></HTML>\n";
-
-    g_data_output_stream_put_string(&dos, ss.str().c_str(), nullptr, nullptr);
-}
-
-void CgiHandler::WriteBadRequest(GDataOutputStream &dos, const gchar *msg)
-{
-    WriteErrorResponse(dos, 400, "Bad Request", msg);
-}
-
-void CgiHandler::WriteInternalError(GDataOutputStream &dos, const gchar *msg)
-{
-    WriteErrorResponse(dos, 500, "Internal Server Error", msg);
-}
-
-void CgiHandler::RequestHandler(
-    const gchar *path,
-    const gchar *method,
-    const gchar *query,
-    GHashTable *params,
-    GOutputStream *output_stream,
-    gpointer user_data)
-{
-    (void)method;
-    (void)query;
-    (void)params;
-
-    auto dos = g_data_output_stream_new(output_stream);
-    assert(nullptr != dos);
-    assert(nullptr != user_data);
-    auto cgi_handler = static_cast<CgiHandler *>(user_data);
-
-    const auto func = basename(const_cast<char *>(path));
-    if (0 == strcmp("getstatus.cgi", func))
+    running_ = true;
+    while (running_)
     {
-        assert(nullptr != cgi_handler->GetColorAreaValue_);
-        const auto status = cgi_handler->GetColorAreaValue_();
-        g_data_output_stream_put_string(dos, "Status: 200 OK\r\n", nullptr, nullptr);
-        g_data_output_stream_put_string(dos, "Content-Type: application/json\r\n\r\n", nullptr, nullptr);
-        ostringstream ss;
-        ss << "{\"status\": " << (status ? "true" : "false") << "}" << endl;
-        g_data_output_stream_put_string(dos, ss.str().c_str(), nullptr, nullptr);
+        HandleFcgiRequest();
     }
-    else if (0 == strcmp("pickcurrent.cgi", func))
+}
+
+gboolean CgiHandler::HandleFcgiRequest()
+{
+    if (0 == FCGX_Accept_r(&request_))
     {
-        assert(nullptr != cgi_handler->PickCurrentCallback_);
-        if (!cgi_handler->PickCurrentCallback_())
+        LOG_I("FCGX_Accept_r OK");
+
+        // Extract the CGI call only from the request
+        const auto command = std::filesystem::path(FCGX_GetParam("SCRIPT_NAME", request_.envp)).filename().string();
+
+        if ("getstatus.cgi" == command)
         {
-            WriteInternalError(*dos, "Failed to pick current color");
-            goto http_exit;
+            assert(nullptr != GetColorAreaValue_);
+            const auto status_json = std::format("{{\"status\": {:b}}}", GetColorAreaValue_());
+            WriteResponse(*request_.out, 200, MIME_JSON, status_json.c_str());
+        }
+        else if ("pickcurrent.cgi" == command)
+        {
+            assert(nullptr != PickCurrentCallback_);
+            if (!PickCurrentCallback_())
+            {
+                WriteResponse(*request_.out, 500, MIME_TEXT, "Failed to pick current color");
+            }
+            else
+            {
+                const auto color = GetColor_();
+                const auto color_json = std::format(R"({{"R": {}, "G": {}, "B": {}}})", color[R], color[G], color[B]);
+                WriteResponse(*request_.out, 200, MIME_JSON, color_json.c_str());
+            }
+        }
+        else
+        {
+            assert(nullptr != request_.out);
+            WriteResponse(*request_.out, 400, MIME_TEXT, std::format("Unknown command '{}'", command).c_str());
         }
 
-        const auto color = cgi_handler->GetColor_();
-        g_data_output_stream_put_string(dos, "Status: 200 OK\r\n", nullptr, nullptr);
-        g_data_output_stream_put_string(dos, "Content-Type: application/json\r\n\r\n", nullptr, nullptr);
-        ostringstream ss;
-        ss << "{\"R\":" << color[R] << ", \"G\":" << color[G] << ", \"B\":" << color[B] << "}" << endl;
-        g_data_output_stream_put_string(dos, ss.str().c_str(), nullptr, nullptr);
+        FCGX_Finish_r(&request_);
     }
-    else
+    return G_SOURCE_CONTINUE;
+}
+
+void CgiHandler::WriteResponse(FCGX_Stream &stream, const guint32 status_code, const gchar *mimetype, const gchar *msg)
+{
+    std::string descr;
+    switch (status_code)
     {
-        WriteBadRequest(*dos, "Unknown action");
+    case 200:
+        descr = "OK";
+        break;
+    case 400:
+        descr = "Bad Request";
+        break;
+    case 500:
+        descr = "Internal Server Error";
+        break;
+    default:
+        LOG_E("%s/%s: Error code %u not yet implemented", __FILE__, __FUNCTION__, status_code);
+        assert(false);
+        break;
     }
-http_exit:
-    g_object_unref(dos);
+    const std::string response_text =
+        std::format("Status: {} {}\r\nContent-Type: {}\r\n\r\n{}", status_code, descr.c_str(), mimetype, msg);
+    FCGX_FPrintF(&stream, response_text.c_str());
 }

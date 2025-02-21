@@ -321,7 +321,7 @@ int main(int argc, char *argv[])
         goto exit_param;
     }
 
-    LOG_I("Start main loop ...");
+    LOG_I("Create and start main loop ...");
     assert(nullptr == loop);
     loop = g_main_loop_new(nullptr, FALSE);
     g_main_loop_run(loop);
