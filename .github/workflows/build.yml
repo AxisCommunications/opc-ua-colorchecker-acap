@@ -11,13 +11,15 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
     strategy:
       matrix:
+        # Build both with Docker and Podman
+        builder: ["docker", "podman"]
         # Build both normal version and debug version
         debug_write: ["", "debug"]
     steps:
       - uses: actions/checkout@v4
       # Test all Makefile targets and make sure the ACAP files are created
       - name: Build
-        run: DEBUG_WRITE=${{ matrix.debug_write }} make -j dockerbuild
+        run: DEBUG_WRITE=${{ matrix.debug_write }} make -j ${{ matrix.builder }}build
       - name: Verify
         run: |
           for f in *.eap; do
