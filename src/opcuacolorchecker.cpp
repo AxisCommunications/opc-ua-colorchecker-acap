@@ -85,7 +85,7 @@ static gboolean imageanalysis(gpointer data)
     assert(nullptr != paramhandler);
     // Get the latest NV12 image frame from VDO using the imageprovider
     assert(nullptr != provider);
-    auto buf = ImageProvider::GetLastFrameBlocking(*provider);
+    auto buf = provider->GetLastFrameBlocking();
     if (nullptr == buf)
     {
         LOG_I("%s/%s: No more frames available, exiting", __FILE__, __FUNCTION__);
@@ -162,7 +162,7 @@ static gboolean imageanalysis(gpointer data)
     g_mutex_unlock(&mtx);
 
     // Release the VDO frame buffer
-    ImageProvider::ReturnFrame(*provider, *buf);
+    provider->ReturnFrame(*buf);
 
     return TRUE;
 }
@@ -190,14 +190,9 @@ static gboolean initimageanalysis(const unsigned int w, const unsigned int h)
 
     LOG_I("Creating VDO image provider and creating stream %d x %d", streamWidth, streamHeight);
     provider = new ImageProvider(streamWidth, streamHeight, 2, VDO_FORMAT_YUV);
-    if (!provider)
+    if (nullptr == provider)
     {
         LOG_E("%s/%s: Failed to create ImageProvider", __FILE__, __FUNCTION__);
-        return FALSE;
-    }
-    if (!provider->InitImageProvider())
-    {
-        LOG_E("%s/%s: Failed to init ImageProvider", __FILE__, __FUNCTION__);
         return FALSE;
     }
 

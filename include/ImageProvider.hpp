@@ -42,43 +42,36 @@
 class ImageProvider
 {
   public:
-    ImageProvider(const unsigned int w, const unsigned int h, const unsigned int numFrames, const VdoFormat format);
-    ~ImageProvider();
-    bool InitImageProvider();
     static bool ChooseStreamResolution(
-        const unsigned int reqWidth,
-        const unsigned int reqHeight,
-        unsigned int &chosenWidth,
-        unsigned int &chosenHeight);
-    static bool CreateStream(ImageProvider &provider);
-    static bool AllocateVdoBuffers(ImageProvider &provider, VdoStream &vdoStream);
-    static void ReleaseVdoBuffers(ImageProvider &provider);
-    static VdoBuffer *GetLastFrameBlocking(ImageProvider &provider);
-    static void ReturnFrame(ImageProvider &provider, VdoBuffer &buffer);
-    static void *threadEntry(void *data);
+        const unsigned int req_width,
+        const unsigned int req_height,
+        unsigned int &chosen_width,
+        unsigned int &chosen_height);
     static bool StartFrameFetch(ImageProvider &provider);
     static bool StopFrameFetch(ImageProvider &provider);
+    static void *threadEntry(void *data);
 
-    // Keeping track of frames' statuses.
-    GQueue *delivered_frames_;
-    GQueue *processed_frames_;
-
-    // To support fetching frames asynchonously with VDO.
-    pthread_mutex_t frame_mutex_;
-    pthread_cond_t frame_deliver_cond_;
-    pthread_t fetcher_thread_;
-    std::atomic_bool shutdown_;
+    ImageProvider(
+        const unsigned int width,
+        const unsigned int height,
+        const unsigned int num_frames,
+        const VdoFormat format);
+    ~ImageProvider();
+    VdoBuffer *GetLastFrameBlocking();
+    void ReturnFrame(VdoBuffer &buffer);
 
   private:
+    bool AllocateVdoBuffers();
+    void ReleaseVdoBuffers();
     void RunLoopIteration();
-    bool initialized_;
-    unsigned int width_;
-    unsigned int height_;
-    // Number of frames to keep in the delivered_frames queue.
-    unsigned int num_app_frames_;
-    // Stream configuration parameters.
-    VdoFormat vdo_format_;
-    // Vdo stream and buffers handling.
-    VdoStream *vdo_stream_;
+
+    GQueue *delivered_frames_;
+    GQueue *processed_frames_;
+    pthread_cond_t frame_deliver_cond_;
+    pthread_mutex_t frame_mutex_;
+    pthread_t fetcher_thread_;
+    std::atomic_bool shutdown_;
+    unsigned int num_frames_;
     VdoBuffer *vdo_buffers_[NUM_VDO_BUFFERS];
+    VdoStream *vdo_stream_;
 };
