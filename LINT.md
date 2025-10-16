@@ -22,7 +22,7 @@ docker run --rm \
   -v "$PWD":/tmp/lint \
   -e RUN_LOCAL=true \
   --env-file .github/super-linter.env \
-  ghcr.io/super-linter/super-linter:slim-v7
+  ghcr.io/super-linter/super-linter:slim-v8
 ```
 
 ## Run super-linter interactively
@@ -36,7 +36,7 @@ docker run -it --rm \
   -w /tmp/lint \
   --env-file .github/super-linter.env \
   --entrypoint /bin/bash \
-  ghcr.io/super-linter/super-linter:slim-v7
+  ghcr.io/super-linter/super-linter:slim-v8
 ```
 
 Then from the container terminal, the following commands can lint the the code
