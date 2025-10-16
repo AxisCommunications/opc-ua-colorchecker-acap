@@ -16,7 +16,7 @@ jobs:
         # Build both normal version and debug version
         debug_write: ["", "debug"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # Test all Makefile targets and make sure the ACAP files are created
       - name: Build
         run: DEBUG_WRITE=${{ matrix.debug_write }} make -j ${{ matrix.builder }}build
