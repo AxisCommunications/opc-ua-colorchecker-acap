@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2023, Axis Communications AB, Lund, Sweden
+ * Copyright (C) 2025, Axis Communications AB, Lund, Sweden
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-const parambaseurl = '/axis-cgi/param.cgi?action=';
 const paramappname = 'Opcuacolorchecker';
-const paramgeturl = parambaseurl + 'list&group=' + paramappname + '.';
-const paramseturl = parambaseurl + 'update&' + paramappname + '.';
-const appbaseurl = '/local/' + paramappname.toLowerCase() + '/';
-const getstatusurl = appbaseurl + 'getstatus.cgi';
+const parambaseurl = '/axis-cgi/param.cgi?action=';
+const paramgeturl = `${parambaseurl}list&group=${paramappname}.`;
+const paramseturl = `${parambaseurl}update&${paramappname}.`;
+const appbaseurl = `/local/${paramappname.toLowerCase()}/`;
+const getstatusurl = `${appbaseurl}getstatus.cgi`;
 const getstatusinterval = 1000;
-const pickcurrenturl = appbaseurl + 'pickcurrent.cgi';
+const pickcurrenturl = `${appbaseurl}pickcurrent.cgi`;
 
 const Shape = {
 	Ellipse: 0,
@@ -45,13 +45,19 @@ function setStatus(status) {
 }
 
 function updateStatus() {
-	$.get(getstatusurl)
-		.done(function (data) {
+	fetch(getstatusurl)
+		.then(response => {
+			if (!response.ok) {
+				throw new Error(`Getting status, the network response was not ok: ${response.status} ${response.statusText}`);
+			}
+			return response.json();
+		})
+		.then(data => {
 			setStatus(data.status);
 			setTimeout(updateStatus, getstatusinterval);
 		})
-		.fail(function (jqXHR, textStatus, errorThrown) {
-			console.log('FAILED to get status. (' + errorThrown + ')');
+		.catch(error => {
+			console.log(`FAILED to get status: ${error}`);
 			setTimeout(updateStatus, getstatusinterval);
 		});
 }
@@ -117,7 +123,7 @@ function drawMarker(X, Y, color, lineWidth) {
 			drawRectangleMarker(X, Y, color, lineWidth);
 			break;
 		default:
-			throw new Error('Unsupported marker shape value ' + val);
+			throw new Error(`Unsupported marker shape value ${val}`);
 	}
 }
 
@@ -141,7 +147,6 @@ function updateWidth(newvalue) {
 	if (document.getElementById('markerlockaspect').checked) {
 		updateWH('MarkerHeight', newvalue);
 	}
-
 }
 
 function updateHeight(newvalue) {
@@ -189,11 +194,11 @@ function getEdgeColor(color, diff) {
 	const newR = trimColorComponent(Number(color.R) + Number(diff));
 	const newG = trimColorComponent(Number(color.G) + Number(diff));
 	const newB = trimColorComponent(Number(color.B) + Number(diff));
-	return 'rgb(' + newR + ',' + newG + ',' + newB + ')';
+	return `rgb(${newR},${newG},${newB})`;
 }
 
 function getColorString(thecolor) {
-	return 'rgb(' + thecolor.R + ',' + thecolor.G + ',' + thecolor.B + ')';
+	return `rgb(${thecolor.R},${thecolor.G},${thecolor.B})`;
 }
 
 function updateTolerance(tolerance, set = true) {
@@ -210,7 +215,7 @@ function updateTolerance(tolerance, set = true) {
 		G: document.getElementById('colG').value,
 		B: document.getElementById('colB').value
 	};
-	gradient.style.background = 'linear-gradient(to right,' + getEdgeColor(thecolor, -tolerance) + ',' + getColorString(thecolor) + ',' + getEdgeColor(thecolor, tolerance) + ')';
+	gradient.style.background = `linear-gradient(to right,${getEdgeColor(thecolor, -tolerance)},${getColorString(thecolor)},${getEdgeColor(thecolor, tolerance)})`;
 }
 
 function updateR(value) {
@@ -229,27 +234,34 @@ function updateB(value) {
 }
 
 function getCurrentValue(param) {
-	return new Promise(function (resolve, reject) {
-		$.get(paramgeturl + param)
-			.done(function (data) {
-				var value = data.split('=')[1];
-				console.log('Got ' + param + ' value ' + value);
-				resolve(Number(value));
-			})
-			.fail(function (data) {
-				alert('FAILED to get ' + param);
-				reject(data);
-			});
-	});
+	return fetch(`${paramgeturl}${param}`)
+		.then(response => {
+			if (!response.ok) {
+				throw new Error(`Getting parameter value, the network response was not ok: ${response.status} ${response.statusText}`);
+			}
+			return response.text();
+		})
+		.then(data => {
+			var value = data.split('=')[1];
+			console.log(`Got ${param} value ${value}`);
+			return Number(value);
+		})
+		.catch(error => {
+			alert(`FAILED to get ${param}`);
+			throw error;
+		});
 }
 
 function setParam(param, value) {
-	$.get(paramseturl + param + '=' + value)
-		.done(function (data) {
-			console.log('Set ' + param + ' to ' + value);
+	fetch(`${paramseturl}${param}=${value}`)
+		.then(response => {
+			if (!response.ok) {
+				throw new Error(`Setting parameter value, the network response was not ok: ${response.status} ${response.statusText}`);
+			}
+			console.log(`Set ${param} to ${value}`);
 		})
-		.fail(function (jqXHR, textStatus, errorThrown) {
-			alert('FAILED to set ' + param);
+		.catch(error => {
+			alert(`FAILED to set ${param}: ${error.message}`);
 		});
 }
 
@@ -275,7 +287,7 @@ async function initWithCurrentValues() {
 	var preview = document.getElementById('preview');
 	preview.width = preview.style.width = draw.width = width;
 	preview.height = preview.style.height = draw.height = height;
-	preview.src = '/axis-cgi/mjpg/video.cgi?resolution=' + width + 'x' + height;
+	preview.src = `/axis-cgi/mjpg/video.cgi?resolution=${width}x${height}`;
 
 	document.getElementById('colR').value = thecolor.R;
 	document.getElementById('colG').value = thecolor.G;
@@ -314,15 +326,21 @@ function handleMouseClick(event) {
 }
 
 function captureColor() {
-	$.get(pickcurrenturl)
-		.done(function (newColor) {
+	fetch(pickcurrenturl)
+		.then(response => {
+			if (!response.ok) {
+				throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+			}
+			return response.json();
+		})
+		.then(newColor => {
 			document.getElementById('colR').value = newColor.R;
 			document.getElementById('colG').value = newColor.G;
 			document.getElementById('colB').value = newColor.B;
 			updateTolerance(document.getElementById('tolerancenumbox').value, false);
 		})
-		.fail(function (jqXHR, textStatus, errorThrown) {
-			alert('Failed to capture color; is the application running?\n' + '(Error msg: ' + errorThrown + ')');
+		.catch(error => {
+			alert(`Failed to capture color; is the application running?\n(Error msg: ${error.message})`);
 		});
 }
 

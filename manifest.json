@@ -1,5 +1,5 @@
 {
-    "schemaVersion": "1.7.3",
+    "schemaVersion": "1.7.4",
     "acapPackageConf": {
         "setup": {
             "friendlyName": "OPC UA Color Checker",
@@ -8,7 +8,7 @@
             "embeddedSdkVersion": "3.0",
             "vendorUrl": "https://www.axis.com/",
             "runMode": "respawn",
-            "version": "2.0.1"
+            "version": "2.2.0"
         },
         "configuration": {
             "settingPage": "settings.html",
