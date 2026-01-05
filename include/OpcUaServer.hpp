@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <chrono>
+#include <mutex>
 #include <open62541/server.h>
 #include <open62541/server_config_default.h>
 #include <thread>
@@ -36,6 +38,8 @@ class OpcUaServer
     void AddBoolean(char *label, UA_Boolean value);
     static void RunUaServer(OpcUaServer *parent);
     bool colorareavalue_;
+    std::chrono::steady_clock::time_point lastupdate_;
+    std::mutex mtx_;
     std::thread *serverthread_;
     UA_Boolean running_;
     UA_Server *server_;
