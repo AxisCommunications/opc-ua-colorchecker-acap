@@ -22,8 +22,11 @@
 using namespace std;
 
 #define LABEL (char *)"ColorAreaReading"
+#define REFRESH_INTERVAL_MS 1000
 
-OpcUaServer::OpcUaServer() : serverthread_(nullptr), running_(false), server_(nullptr)
+OpcUaServer::OpcUaServer()
+    : colorareavalue_(false), lastupdate_(chrono::steady_clock::time_point{}), serverthread_(nullptr), running_(false),
+      server_(nullptr)
 {
 }
 
@@ -96,14 +99,29 @@ void OpcUaServer::UpdateColorAreaValue(bool value)
     {
         return;
     }
-    // Always update value even if there is no change; that will bump the
-    // timestamp on the server so the client can see if the value is fresh or
-    // ancient.
-    UA_Variant newvalue;
-    UA_Variant_setScalar(&newvalue, &value, &UA_TYPES[UA_TYPES_BOOLEAN]);
-    UA_NodeId currentNodeId = UA_NODEID_STRING(1, LABEL);
-    UA_Server_writeValue(server_, currentNodeId, newvalue);
-    LOG_D("%s%s: Color area value set to: %s", __FILE__, __FUNCTION__, value ? "TRUE" : "FALSE");
+    // Even if there is no change, update every REFRESH_INTERVAL_MS millisecond(s);
+    // that will bump the timestamp on the server so the client can see if the
+    // value is fresh or ancient.
+    const auto now = chrono::steady_clock::now();
+    lock_guard<mutex> lock(mtx_);
+    const auto elapsedtime = now - lastupdate_;
+    if (colorareavalue_ != value || chrono::milliseconds(REFRESH_INTERVAL_MS) <= elapsedtime)
+    {
+        UA_Variant newvalue;
+        UA_Variant_setScalar(&newvalue, &value, &UA_TYPES[UA_TYPES_BOOLEAN]);
+        UA_NodeId currentNodeId = UA_NODEID_STRING(1, LABEL);
+        const auto rc = UA_Server_writeValue(server_, currentNodeId, newvalue);
+        if (UA_STATUSCODE_GOOD != rc)
+        {
+            LOG_E("%s/%s: Failed to set OPC UA color area value (%s)", __FILE__, __FUNCTION__, UA_StatusCode_name(rc));
+        }
+        else
+        {
+            LOG_D("%s/%s: Color area value set to: %s", __FILE__, __FUNCTION__, value ? "TRUE" : "FALSE");
+        }
+        colorareavalue_ = value;
+        lastupdate_ = now;
+    }
 }
 
 bool OpcUaServer::GetColorAreaValue()
@@ -114,8 +132,9 @@ bool OpcUaServer::GetColorAreaValue()
 
     UA_Variant value;
     UA_Variant_init(&value);
-    UA_Server_readValue(server_, currentNodeId, &value);
+    const auto rc = UA_Server_readValue(server_, currentNodeId, &value);
 
+    assert(rc == UA_STATUSCODE_GOOD);
     assert(UA_Variant_isScalar(&value));
     assert(UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_BOOLEAN]));
 
@@ -144,7 +163,7 @@ void OpcUaServer::AddBoolean(char *label, UA_Boolean value)
     UA_QualifiedName name = UA_QUALIFIEDNAME(1, label);
     UA_NodeId parent_node_id = UA_NODEID_NUMERIC(0, UA_NS0ID_OBJECTSFOLDER);
     UA_NodeId parent_ref_node_id = UA_NODEID_NUMERIC(0, UA_NS0ID_ORGANIZES);
-    UA_Server_addVariableNode(
+    const auto rc = UA_Server_addVariableNode(
         server_,
         node_id,
         parent_node_id,
@@ -154,6 +173,7 @@ void OpcUaServer::AddBoolean(char *label, UA_Boolean value)
         attr,
         nullptr,
         nullptr);
+    assert(UA_STATUSCODE_GOOD == rc);
 }
 
 void OpcUaServer::RunUaServer(OpcUaServer *parent)

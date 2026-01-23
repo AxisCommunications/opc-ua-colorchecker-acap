@@ -4,8 +4,8 @@ ARG SDK_IMAGE=docker.io/axisecp/acap-native-sdk
 ARG DEBUG_WRITE
 ARG BUILD_DIR=/opt/build
 ARG ACAP_BUILD_DIR="$BUILD_DIR"/app
-ARG OPEN62541_VERSION=1.4.4
-ARG OPENCV_VERSION=4.11.0
+ARG OPEN62541_VERSION=1.4.14
+ARG OPENCV_VERSION=4.12.0
 
 FROM $SDK_IMAGE:$SDK_VERSION-$ARCH AS builder
 
@@ -108,6 +108,7 @@ RUN . /opt/axis/acapsdk/environment-setup* && \
     -DBUILD_BUILD_EXAMPLES=OFF \
     -DBUILD_SHARED_LIBS=ON \
     -DUA_ENABLE_NODEMANAGEMENT=ON \
+    -DUA_MULTITHREADING=100 \
     "$OPEN62541_SRC_DIR"
 RUN cmake --build . -j "$(nproc)" --target install/strip
 
