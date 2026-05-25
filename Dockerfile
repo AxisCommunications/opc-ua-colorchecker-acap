@@ -116,7 +116,7 @@ RUN cmake --build . -j "$(nproc)" --target install/strip
 WORKDIR "$ACAP_BUILD_DIR"/lib
 RUN cp -P "$OPENCV_BUILD_DIR"/lib/lib*.so* "$OPEN62541_BUILD_DIR"/bin/lib* ./
 
-# Build ACAP
+# Build ACAP package
 WORKDIR "$ACAP_BUILD_DIR"
 COPY LICENSE \
     Makefile \
