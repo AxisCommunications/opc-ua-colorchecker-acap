@@ -1,14 +1,19 @@
 {
-    "schemaVersion": "1.7.4",
+    "schemaVersion": "2.0.0",
     "acapPackageConf": {
         "setup": {
             "friendlyName": "OPC UA Color Checker",
             "appName": "opcuacolorchecker",
             "vendor": "Axis Communications AB",
-            "embeddedSdkVersion": "3.0",
             "vendorUrl": "https://www.axis.com/",
             "runMode": "respawn",
-            "version": "2.2.1"
+            "version": "2.3.0",
+            "vendorId": "1234567890",
+            "compatibleOsVersions": [
+                {
+                    "max": "13"
+                }
+            ]
         },
         "configuration": {
             "settingPage": "settings.html",
