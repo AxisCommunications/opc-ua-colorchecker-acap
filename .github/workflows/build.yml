@@ -3,6 +3,9 @@ name: Build
 
 on: push
 
+permissions:
+  contents: read
+
 jobs:
   build_acap:
     name: Build ACAP packages
