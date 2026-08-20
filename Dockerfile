@@ -5,7 +5,9 @@ ARG DEBUG_WRITE
 ARG BUILD_DIR=/opt/build
 ARG ACAP_BUILD_DIR="$BUILD_DIR"/app
 ARG OPEN62541_VERSION=1.4.14
+ARG OPEN62541_SHA256=0a0a8830e4e5f720e901579f826c788fdbc3d49f44a9515ab15a06e877b59416
 ARG OPENCV_VERSION=4.12.0
+ARG OPENCV_SHA256=44c106d5bb47efec04e531fd93008b3fcd1d27138985c5baf4eafac0e1ec9e9d
 
 FROM $SDK_IMAGE:$SDK_VERSION-$ARCH AS builder
 
@@ -14,7 +16,9 @@ ARG ARCH
 ARG ACAP_BUILD_DIR
 ARG BUILD_DIR
 ARG OPEN62541_VERSION
+ARG OPEN62541_SHA256
 ARG OPENCV_VERSION
+ARG OPENCV_SHA256
 ARG DEBUG_WRITE
 ENV DEBUG_WRITE=$DEBUG_WRITE
 
@@ -30,7 +34,10 @@ ARG OPENCV_BUILD_DIR="$OPENCV_DIR"/build
 
 WORKDIR "$OPENCV_DIR"
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN curl -L https://github.com/opencv/opencv/archive/$OPENCV_VERSION.tar.gz | tar xz
+RUN curl -L -o opencv.tar.gz https://github.com/opencv/opencv/archive/$OPENCV_VERSION.tar.gz && \
+    echo "$OPENCV_SHA256  opencv.tar.gz" | sha256sum -c - && \
+    tar xzf opencv.tar.gz && \
+    rm opencv.tar.gz
 
 WORKDIR "$OPENCV_BUILD_DIR"
 ENV COMMON_CMAKE_FLAGS="-S $OPENCV_SRC_DIR \
@@ -98,8 +105,10 @@ ARG OPEN62541_SRC_DIR="$OPEN62541_DIR"/open62541-$OPEN62541_VERSION
 ARG OPEN62541_BUILD_DIR="$OPEN62541_DIR"/build
 
 WORKDIR "$OPEN62541_DIR"
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN curl -L https://github.com/open62541/open62541/archive/refs/tags/v$OPEN62541_VERSION.tar.gz | tar xz
+RUN curl -L -o open62541.tar.gz https://github.com/open62541/open62541/archive/refs/tags/v$OPEN62541_VERSION.tar.gz && \
+    echo "$OPEN62541_SHA256  open62541.tar.gz" | sha256sum -c - && \
+    tar xzf open62541.tar.gz && \
+    rm open62541.tar.gz
 WORKDIR "$OPEN62541_BUILD_DIR"
 RUN . /opt/axis/acapsdk/environment-setup* && \
     cmake \
