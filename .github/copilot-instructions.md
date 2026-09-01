@@ -46,7 +46,7 @@ When changing CGI behavior, keep these aligned:
 ## C++ conventions
 
 - Build standard is C++20 with `-Wall -Wextra -Werror`; retain explicit error handling.
-- Follow [`.clang-format`](../manifest.json): LLVM, Allman braces, 4 spaces, 120 columns,
+- Follow [`.clang-format`](../.clang-format): LLVM, Allman braces, 4 spaces, 120 columns,
   no packed parameters.
 - New C++ headers/sources use the existing Apache-2.0 Axis header; headers use `#pragma once`.
 - Use PascalCase methods, trailing member underscores, GLib types at GLib boundaries, and
