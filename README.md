@@ -179,8 +179,8 @@ curl -k --anyauth -u root:<password> \
 
 Use the camera's
 [param.cgi](https://www.axis.com/vapix-library/subjects/t10175981/section/t10036014/display)
-to set the center/min/max points, as well as clockwise/counterclockwise and the
-OPC UA server port number.
+to set the center point, target color, marker size and shape, tolerance, and
+OPC UA server port.
 
 The call
 

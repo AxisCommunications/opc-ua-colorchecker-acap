@@ -143,5 +143,5 @@ void CgiHandler::WriteResponse(FCGX_Stream &stream, const guint32 status_code, c
     }
     const std::string response_text =
         std::format("Status: {} {}\r\nContent-Type: {}\r\n\r\n{}", status_code, descr.c_str(), mimetype, msg);
-    FCGX_FPrintF(&stream, response_text.c_str());
+    FCGX_FPrintF(&stream, "%s", response_text.c_str());
 }

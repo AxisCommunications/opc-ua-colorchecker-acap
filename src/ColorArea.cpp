@@ -44,11 +44,14 @@ ColorArea::ColorArea(
     : color_(color), img_size_(img.size()), markerwidth_(markerwidth), markerheight_(markerheight),
       tolerance_(tolerance)
 {
+    markerwidth_ = min(markerwidth_, static_cast<uint32_t>(img.cols));
+    markerheight_ = min(markerheight_, static_cast<uint32_t>(img.rows));
+
     // Crop to avoid processing pixels outside color area
-    int max_x = point_center.x + markerwidth / 2;
-    int max_y = point_center.y + markerheight / 2;
-    int min_x = point_center.x - markerwidth / 2;
-    int min_y = point_center.y - markerheight / 2;
+    int max_x = point_center.x + markerwidth_ / 2;
+    int max_y = point_center.y + markerheight_ / 2;
+    int min_x = point_center.x - markerwidth_ / 2;
+    int min_y = point_center.y - markerheight_ / 2;
     if (img.size().width < max_x)
     {
         max_x = img.size().width;
@@ -82,8 +85,8 @@ ColorArea::ColorArea(
         __FUNCTION__,
         img_size_.width,
         img_size_.height,
-        markerwidth,
-        markerheight,
+        markerwidth_,
+        markerheight_,
         point_center.x,
         point_center.y,
         color[R],
@@ -145,7 +148,7 @@ ColorAreaEllipse::ColorAreaEllipse(
     const auto marker_img = img.clone();
 
     // Draw the ellipse
-    Size axes(markerwidth / 2, markerheight / 2);
+    Size axes(markerwidth_ / 2, markerheight_ / 2);
     ellipse(marker_img, point_center, axes, 0, 0, 360, cv::Scalar(0, 0, 0), 3);
     ellipse(marker_img, point_center, axes, 0, 0, 360, cv::Scalar(255, 255, 255), 1);
 
@@ -157,7 +160,7 @@ ColorAreaEllipse::ColorAreaEllipse(
     ellipse(
         colorarea_mask_,
         point_center_,
-        Size(markerwidth / 2, markerheight / 2),
+        Size(markerwidth_ / 2, markerheight_ / 2),
         0.0,
         0,
         360,
@@ -183,8 +186,8 @@ ColorAreaRectangle::ColorAreaRectangle(
     const auto marker_img = img.clone();
 
     // Draw the rectangle
-    const auto pt1 = point_center - Point(markerwidth / 2, markerheight / 2);
-    const auto pt2 = point_center + Point(markerwidth / 2, markerheight / 2);
+    const auto pt1 = point_center - Point(markerwidth_ / 2, markerheight_ / 2);
+    const auto pt2 = point_center + Point(markerwidth_ / 2, markerheight_ / 2);
     rectangle(marker_img, pt1, pt2, Scalar(0, 0, 0), 3);
     rectangle(marker_img, pt1, pt2, Scalar(255, 255, 255), 1);
 

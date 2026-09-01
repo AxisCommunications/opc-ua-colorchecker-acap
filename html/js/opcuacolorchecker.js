@@ -166,7 +166,7 @@ function updateAspect(checked) {
 
 	document.getElementById('markerwidthnumbox').max = mwmax;
 	document.getElementById('markerwidthslider').max = mwmax;
-	document.getElementById('markerheightslider').max = mhmax;
+	document.getElementById('markerheightnumbox').max = mhmax;
 	document.getElementById('markerheightslider').max = mhmax;
 
 	if (checked) {
