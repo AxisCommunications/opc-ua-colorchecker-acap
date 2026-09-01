@@ -23,8 +23,8 @@
                 {"type": "fastCgi", "name": "pickcurrent.cgi", "access": "admin"}
             ],
             "paramConfig": [
-                {"name": "CenterX", "type": "int:min=0,max=959", "default": "100"},
-                {"name": "CenterY", "type": "int:min=0,max=539", "default": "170"},
+                {"name": "CenterX", "type": "int:min=0", "default": "100"},
+                {"name": "CenterY", "type": "int:min=0", "default": "170"},
                 {"name": "ColorB", "type": "double:min=0,max=255", "default": "50"},
                 {"name": "ColorG", "type": "double:min=0,max=255", "default": "50"},
                 {"name": "ColorR", "type": "double:min=0,max=255", "default": "50"},
