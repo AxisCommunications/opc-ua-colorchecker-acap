@@ -71,9 +71,10 @@ When changing CGI behavior, keep these aligned:
 ## Build and validation
 
 - Build both packages with `make -j "$(nproc)" dockerbuild` or `make -j "$(nproc)" podmanbuild`.
-- Use `make -j "$(nproc)" aarch64.docker` or `make -j "$(nproc)" armv7hf.docker` for a focused Docker build.
+- Use `make aarch64.docker` or `make armv7hf.docker` for a focused Docker build.
+- Use `make aarch64.podman` or `make armv7hf.podman` for a focused Podman build.
 - There is no automated test suite. For C++ changes, run the relevant container build.
 - For formatting, documentation, or configuration changes, run the matching Super-Linter check.
-- `LINT.md` documents the full and focused linter commands.
+- [`LINT.md`](../LINT.md) documents the full and focused linter commands.
 - Validate every altered cross-file contract before finishing.
 - Do not modify unrelated generated packages or dependency pins.
