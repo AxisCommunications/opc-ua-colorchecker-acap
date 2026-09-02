@@ -1,0 +1,11 @@
+{
+  "tagname-lowercase": true,
+  "attr-lowercase": true,
+  "attr-value-double-quotes": true,
+  "spec-char-escape": true,
+  "id-unique": true,
+  "src-not-empty": true,
+  "alt-require": true,
+  "doctype-first": true,
+  "indent": ["error", "tab"]
+}
