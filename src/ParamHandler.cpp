@@ -31,19 +31,19 @@ ParamHandler::ParamHandler(const gchar *app_name, void (*PurgeColorArea)(), void
     assert(nullptr != PurgeColorArea_);
     assert(nullptr != RestartOpcUaServer_);
 
-    LOG_I("Init parameter handling ...");
+    LOG_I("⏳ Init parameter handling ...");
     g_mutex_init(&mtx_);
     GError *error = nullptr;
     axparameter_ = ax_parameter_new(app_name, &error);
     if (nullptr != error)
     {
-        LOG_E("%s/%s: ax_parameter_new failed (%s)", __FILE__, __FUNCTION__, error->message);
+        LOG_E("%s/%s: ax_parameter_new failed (%s)", __FILE__, __func__, error->message);
         g_error_free(error);
         assert(FALSE);
     }
     assert(nullptr != axparameter_);
     // clang-format off
-    LOG_I("Setting up parameters ...");
+    LOG_I("⏳ Setting up parameters ...");
     if (!SetupParamInt("CenterX", ParamCallbackInt) ||
         !SetupParamInt("CenterY", ParamCallbackInt) ||
         !SetupParamDouble("ColorB", ParamCallbackDouble) ||
@@ -58,22 +58,16 @@ ParamHandler::ParamHandler(const gchar *app_name, void (*PurgeColorArea)(), void
         !SetupParamInt("Width", ParamCallbackInt))
     // clang-format on
     {
-        LOG_E("%s/%s: Failed to set up parameters", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed to set up parameters", __FILE__, __func__);
         assert(FALSE);
     }
 
     // Log retrieved param values
-    LOG_I("%s/%s: center: (%u, %u)", __FILE__, __FUNCTION__, center_point_.x, center_point_.y);
-    LOG_I(
-        "%s/%s: color (R, G, B) = (%.1f, %.1f, %.1f)",
-        __FILE__,
-        __FUNCTION__,
-        color_.val[R],
-        color_.val[G],
-        color_.val[B]);
-    LOG_I("%s/%s: marker dimenstions (w, h) = (%u, %u)", __FILE__, __FUNCTION__, markerwidth_, markerheight_);
-    LOG_I("%s/%s: marker shape = %u", __FILE__, __FUNCTION__, markershape_);
-    LOG_I("%s/%s: tolerance: %u", __FILE__, __FUNCTION__, tolerance_);
+    LOG_I("(%s) center: (%u, %u)", __func__, center_point_.x, center_point_.y);
+    LOG_I("(%s) color (R, G, B) = (%.1f, %.1f, %.1f)", __func__, color_.val[R], color_.val[G], color_.val[B]);
+    LOG_I("(%s) marker dimenstions (w, h) = (%u, %u)", __func__, markerwidth_, markerheight_);
+    LOG_I("(%s) marker shape = %u", __func__, markershape_);
+    LOG_I("(%s) tolerance: %u", __func__, tolerance_);
 }
 
 ParamHandler::~ParamHandler()
@@ -111,11 +105,11 @@ void ParamHandler::ParamCallbackDouble(const gchar *name, const gchar *value, vo
     assert(nullptr != data);
     if (nullptr == value)
     {
-        LOG_E("%s/%s: Unexpected nullptr value for %s", __FILE__, __FUNCTION__, name);
+        LOG_E("%s/%s: Unexpected nullptr value for %s", __FILE__, __func__, name);
         return;
     }
 
-    LOG_I("Update for parameter %s (%s)", name, value);
+    LOG_I("✅ Update for parameter %s (%s)", name, value);
     const auto lastdot = strrchr(name, '.');
     assert(nullptr != lastdot);
     assert(1 < strlen(name) - strlen(lastdot));
@@ -130,11 +124,11 @@ void ParamHandler::ParamCallbackInt(const gchar *name, const gchar *value, void 
     assert(nullptr != data);
     if (nullptr == value)
     {
-        LOG_E("%s/%s: Unexpected nullptr value for %s", __FILE__, __FUNCTION__, name);
+        LOG_E("%s/%s: Unexpected nullptr value for %s", __FILE__, __func__, name);
         return;
     }
 
-    LOG_I("Update for parameter %s (%s)", name, value);
+    LOG_I("✅ Update for parameter %s (%s)", name, value);
     const auto lastdot = strrchr(name, '.');
     assert(nullptr != lastdot);
     assert(1 < strlen(name) - strlen(lastdot));
@@ -149,15 +143,15 @@ gboolean ParamHandler::SetParam(const gchar *name, const gchar &value, gboolean 
 
     if (!ax_parameter_set(axparameter_, name, &value, do_sync, &error))
     {
-        LOG_E("%s/%s: failed to set %s parameter", __FILE__, __FUNCTION__, name);
+        LOG_E("%s/%s: failed to set %s parameter", __FILE__, __func__, name);
         if (nullptr != error)
         {
-            LOG_E("%s/%s: %s", __FILE__, __FUNCTION__, error->message);
+            LOG_E("%s/%s: %s", __FILE__, __func__, error->message);
             g_error_free(error);
         }
         return FALSE;
     }
-    LOG_I("Set %s value: %s", name, &value);
+    LOG_I("✅ Set %s value: %s", name, &value);
     return TRUE;
 }
 
@@ -186,15 +180,15 @@ gchar *ParamHandler::GetParam(const gchar *name) const
     gchar *value = nullptr;
     if (!ax_parameter_get(axparameter_, name, &value, &error))
     {
-        LOG_E("%s/%s: failed to get %s parameter", __FILE__, __FUNCTION__, name);
+        LOG_E("%s/%s: failed to get %s parameter", __FILE__, __func__, name);
         if (nullptr != error)
         {
-            LOG_E("%s/%s: %s", __FILE__, __FUNCTION__, error->message);
+            LOG_E("%s/%s: %s", __FILE__, __func__, error->message);
             g_error_free(error);
         }
         return nullptr;
     }
-    LOG_I("Got %s value: %s", name, value);
+    LOG_I("✅ Got '%s' value: %s", name, value);
     return value;
 }
 
@@ -239,7 +233,7 @@ void ParamHandler::UpdateLocalParam(const gchar *name, const gdouble val)
     }
     else
     {
-        LOG_E("%s/%s: FAILED to act on param %s", __FILE__, __FUNCTION__, name);
+        LOG_E("%s/%s: FAILED to act on param %s", __FILE__, __func__, name);
         throw runtime_error("Unknown double parameter.");
     }
     PurgeColorArea_();
@@ -289,7 +283,7 @@ void ParamHandler::UpdateLocalParam(const gchar *name, const gint32 val)
     }
     else
     {
-        LOG_E("%s/%s: FAILED to act on param %s", __FILE__, __FUNCTION__, name);
+        LOG_E("%s/%s: FAILED to act on param %s", __FILE__, __func__, name);
         throw runtime_error("Unknown int parameter.");
     }
 
@@ -307,10 +301,10 @@ gboolean ParamHandler::SetupParam(const gchar *name, AXParameterCallback callbac
 
     if (!ax_parameter_register_callback(axparameter_, name, callbackfn, this, &error))
     {
-        LOG_E("%s/%s: failed to register %s callback", __FILE__, __FUNCTION__, name);
+        LOG_E("%s/%s: failed to register %s callback", __FILE__, __func__, name);
         if (nullptr != error)
         {
-            LOG_E("%s/%s: %s", __FILE__, __FUNCTION__, error->message);
+            LOG_E("%s/%s: %s", __FILE__, __func__, error->message);
             g_error_free(error);
         }
         return FALSE;
@@ -329,11 +323,11 @@ gboolean ParamHandler::SetupParamDouble(const gchar *name, AXParameterCallback c
     gdouble val;
     if (!GetParam(name, val))
     {
-        LOG_E("%s/%s: Failed to get initial value for %s", __FILE__, __FUNCTION__, name);
+        LOG_E("%s/%s: Failed to get initial value for %s", __FILE__, __func__, name);
         return FALSE;
     }
     UpdateLocalParam(name, val);
-    LOG_I("%s/%s: Set up double parameter %s", __FILE__, __FUNCTION__, name);
+    LOG_I("✅ Set up double parameter '%s'", name);
     usleep(50000); // mitigate timing issue in parameter handling
 
     return TRUE;
@@ -349,11 +343,11 @@ gboolean ParamHandler::SetupParamInt(const gchar *name, AXParameterCallback call
     gint32 val;
     if (!GetParam(name, val))
     {
-        LOG_E("%s/%s: Failed to get initial value for %s", __FILE__, __FUNCTION__, name);
+        LOG_E("%s/%s: Failed to get initial value for %s", __FILE__, __func__, name);
         return FALSE;
     }
     UpdateLocalParam(name, val);
-    LOG_I("%s/%s: Set up integer parameter %s", __FILE__, __FUNCTION__, name);
+    LOG_I("✅ Set up integer parameter '%s'", name);
     usleep(50000); // mitigate timing issue in parameter handling
 
     return TRUE;

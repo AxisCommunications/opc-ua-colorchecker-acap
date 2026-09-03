@@ -36,24 +36,25 @@ OpcUaServer::~OpcUaServer()
 
 bool OpcUaServer::LaunchServer(const unsigned int serverport)
 {
-    LOG_I("%s/%s: port %u", __FILE__, __FUNCTION__, serverport);
     assert(nullptr == server_);
     assert(nullptr == serverthread_);
     assert(!running_);
     assert(1024 <= serverport && 65535 >= serverport);
 
     // Create an OPC UA server
-    LOG_I("%s/%s: Create UA server serving on port %u", __FILE__, __FUNCTION__, serverport);
+    LOG_I("⏳ Creating UA server serving on port %u ...", serverport);
     server_ = UA_Server_new();
     if (nullptr == server_)
     {
-        LOG_E("%s/%s: Failed to create new UA_Server", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed to create new UA_Server", __FILE__, __func__);
         return false;
     }
     UA_ServerConfig_setMinimal(UA_Server_getConfig(server_), serverport, nullptr);
     AddBoolean(LABEL, false);
 
     serverthread_ = new thread(this->RunUaServer, this);
+
+    LOG_I("✅ UA server configured for port %u", serverport);
 
     return true;
 }
@@ -63,7 +64,7 @@ void OpcUaServer::ShutDownServer()
     assert(running_);
     assert(nullptr != serverthread_);
 
-    LOG_I("%s/%s: Shutting down UA server ...", __FILE__, __FUNCTION__);
+    LOG_I("⏳ Shutting down UA server ...");
     running_ = false;
     if (nullptr != serverthread_)
     {
@@ -75,7 +76,7 @@ void OpcUaServer::ShutDownServer()
         serverthread_ = nullptr;
     }
     assert(nullptr == server_);
-    LOG_I("%s/%s: UA server has been shut down", __FILE__, __FUNCTION__);
+    LOG_I("✅ UA server has been shut down");
 }
 
 bool OpcUaServer::IsRunning() const
@@ -113,11 +114,11 @@ void OpcUaServer::UpdateColorAreaValue(bool value)
         const auto rc = UA_Server_writeValue(server_, currentNodeId, newvalue);
         if (UA_STATUSCODE_GOOD != rc)
         {
-            LOG_E("%s/%s: Failed to set OPC UA color area value (%s)", __FILE__, __FUNCTION__, UA_StatusCode_name(rc));
+            LOG_E("%s/%s: Failed to set OPC UA color area value (%s)", __FILE__, __func__, UA_StatusCode_name(rc));
         }
         else
         {
-            LOG_D("%s/%s: Color area value set to: %s", __FILE__, __FUNCTION__, value ? "TRUE" : "FALSE");
+            LOG_D("%s/%s: Color area value set to: %s", __FILE__, __func__, value ? "TRUE" : "FALSE");
         }
         colorareavalue_ = value;
         lastupdate_ = now;
@@ -182,10 +183,10 @@ void OpcUaServer::RunUaServer(OpcUaServer *parent)
     assert(nullptr != parent->server_);
     assert(false == parent->running_);
 
-    LOG_I("%s/%s: Starting UA server ...", __FILE__, __FUNCTION__);
+    LOG_I("⏳ Starting UA server ...");
     parent->running_ = true;
     UA_StatusCode status = UA_Server_run(parent->server_, &parent->running_);
-    LOG_I("%s/%s: UA Server exit status: %s", __FILE__, __FUNCTION__, UA_StatusCode_name(status));
+    LOG_I("UA Server exit status: %s", UA_StatusCode_name(status));
     UA_Server_delete(parent->server_);
     parent->server_ = nullptr;
     return;

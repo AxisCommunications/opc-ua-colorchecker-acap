@@ -78,11 +78,10 @@ ColorArea::ColorArea(
 #endif
 
     LOG_I(
-        "%s/%s: img size = %ux%u, marker size = %ux%u, center = (%u, %u), color (R, G, B) = (%.1f, %.1f, %.1f), "
+        "✅ (%s) img size = %ux%u, marker size = %ux%u, center = (%u, %u), color (R, G, B) = (%.1f, %.1f, %.1f), "
         "tolerance = "
         "%u",
-        __FILE__,
-        __FUNCTION__,
+        __func__,
         img_size_.width,
         img_size_.height,
         markerwidth_,
@@ -120,7 +119,7 @@ bool ColorArea::ColorAreaValueWithinTolerance(const Mat &img) const
     LOG_D(
         "%s/%s: Target/Current average color in region: (%1.f, %.1f, %.1f)/(%.1f, %.1f, %.1f)",
         __FILE__,
-        __FUNCTION__,
+        __func__,
         color_.val[R],
         color_.val[G],
         color_.val[B],
@@ -169,7 +168,7 @@ ColorAreaEllipse::ColorAreaEllipse(
         LINE_8,
         0);
     DBG_WRITE_IMG("mask_img.jpg", colorarea_mask_);
-    LOG_I("%s/%s: Elliptic colorarea created", __FILE__, __FUNCTION__);
+    LOG_I("✅ Elliptic colorarea created");
 }
 
 ColorAreaRectangle::ColorAreaRectangle(
@@ -197,5 +196,5 @@ ColorAreaRectangle::ColorAreaRectangle(
     // Create color mask
     colorarea_mask_ = Mat::ones(Size(croprange_x_.size(), croprange_y_.size()), CV_8U) * 255;
     DBG_WRITE_IMG("mask_img.jpg", colorarea_mask_);
-    LOG_I("%s/%s: Rectancular colorarea created", __FILE__, __FUNCTION__);
+    LOG_I("✅ Rectancular colorarea created");
 }

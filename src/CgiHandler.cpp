@@ -37,7 +37,7 @@ CgiHandler::CgiHandler(cv::Scalar (*GetColor)(), gboolean (*GetColorAreaValue)()
     assert(nullptr != GetColorAreaValue_);
     assert(nullptr != PickCurrentCallback_);
 
-    LOG_I("Setting up FastCGI ...");
+    LOG_I("⏳ Setting up FastCGI ...");
     auto socket_path = getenv(FCGI_SOCKET_NAME);
     if (nullptr == socket_path)
     {
@@ -45,7 +45,7 @@ CgiHandler::CgiHandler(cv::Scalar (*GetColor)(), gboolean (*GetColorAreaValue)()
         assert(false);
     }
 
-    LOG_I("Using socket path %s", socket_path);
+    LOG_I("⏳ Using socket path %s ...", socket_path);
     if (0 != FCGX_Init())
     {
         LOG_E("FCGX_Init failed");
@@ -60,16 +60,16 @@ CgiHandler::CgiHandler(cv::Scalar (*GetColor)(), gboolean (*GetColorAreaValue)()
         assert(false);
     }
 
-    LOG_I("Set up FastCGI for %s, start handling incoming CGI requests ...", socket_path);
+    LOG_I("✅ Set up FastCGI for %s, start handling incoming CGI requests ...", socket_path);
     worker_ = std::jthread(&CgiHandler::Run, this);
 }
 
 CgiHandler::~CgiHandler()
 {
     // std::jthread automatically joins, so we only need to set running_ to false
-    LOG_I("Stop CGI handling ...");
+    LOG_I("⏳ Stop CGI handling ...");
     running_ = false;
-    LOG_I("Shutting down FastCGI ...");
+    LOG_I("⏳ Shutting down FastCGI ...");
     close(sock_);
 }
 
@@ -86,7 +86,7 @@ gboolean CgiHandler::HandleFcgiRequest()
 {
     if (0 == FCGX_Accept_r(&request_))
     {
-        LOG_I("FCGX_Accept_r OK");
+        LOG_I("✅ FCGX_Accept_r OK");
 
         // Extract the CGI call only from the request
         const auto command = std::filesystem::path(FCGX_GetParam("SCRIPT_NAME", request_.envp)).filename().string();
@@ -137,7 +137,7 @@ void CgiHandler::WriteResponse(FCGX_Stream &stream, const guint32 status_code, c
         descr = "Internal Server Error";
         break;
     default:
-        LOG_E("%s/%s: Error code %u not yet implemented", __FILE__, __FUNCTION__, status_code);
+        LOG_E("%s/%s: Error code %u not yet implemented", __FILE__, __func__, status_code);
         assert(false);
         break;
     }

@@ -57,6 +57,8 @@ When changing CGI behavior, keep these aligned:
 - Frames from `GetLastFrameBlocking()` must always be returned with `ReturnFrame()`.
 - Do not introduce unsynchronized access to shared image-analysis state.
 - Scope third-party GCC diagnostic suppression narrowly with the established push/pop pattern.
+- Always set `const` on anything that can be `const`.
+- Use `auto` extensively, but not when keeping the type explicit is more readable.
 
 ## UI and packaging
 
