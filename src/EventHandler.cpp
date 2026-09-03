@@ -31,7 +31,7 @@ static void declaration_complete(guint declaration, gpointer user_data)
 
     bool *init = static_cast<bool *>(user_data);
     *init = true;
-    LOG_I("%s/%s: Event declaration complete!", __FILE__, __FUNCTION__);
+    LOG_I("✅ Event declaration complete");
 }
 
 EventHandler::EventHandler() : event_handler_(ax_event_handler_new()), initialized_(false)
@@ -52,7 +52,7 @@ EventHandler::EventHandler() : event_handler_(ax_event_handler_new()), initializ
 
     if (nullptr != error)
     {
-        LOG_E("%s/%s: Could not add key values: %s", __FILE__, __FUNCTION__, error->message);
+        LOG_E("%s/%s: Could not add key values: %s", __FILE__, __func__, error->message);
         throw runtime_error(error->message);
         g_error_free(error);
     }
@@ -76,7 +76,7 @@ EventHandler::EventHandler() : event_handler_(ax_event_handler_new()), initializ
             &initialized_,
             &error))
     {
-        LOG_E("%s/%s: Could not declare: %s", __FILE__, __FUNCTION__, error->message);
+        LOG_E("%s/%s: Could not declare: %s", __FILE__, __func__, error->message);
         throw runtime_error(error->message);
         g_error_free(error);
     }
@@ -90,10 +90,10 @@ EventHandler::~EventHandler()
     assert(nullptr != event_handler_);
     assert(0 != event_id_);
 
-    LOG_I("%s/%s: Undeclare event ...", __FILE__, __FUNCTION__);
+    LOG_I("⏳ Undeclare event ...");
     ax_event_handler_undeclare(event_handler_, event_id_, nullptr);
 
-    LOG_I("%s/%s: Free eventhandler ...", __FILE__, __FUNCTION__);
+    LOG_I("⏳ Free eventhandler ...");
     ax_event_handler_free(event_handler_);
 }
 
@@ -101,7 +101,7 @@ void EventHandler::Send(const gboolean active) const
 {
     if (!initialized_)
     {
-        LOG_I("%s/%s: Event handling not yet initialized", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Event handling not yet initialized", __FILE__, __func__);
         return;
     }
 
@@ -120,7 +120,7 @@ void EventHandler::Send(const gboolean active) const
     assert(nullptr != event_handler_);
     ax_event_handler_send_event(event_handler_, event_id_, event, NULL);
 
-    LOG_I("%s/%s: Stateful event (%s tolerance) sent", __FILE__, __FUNCTION__, active ? "within" : "exceeds");
+    LOG_I("📯 Stateful event (%s tolerance) sent", active ? "within" : "exceeds");
 
     ax_event_free(event);
 }

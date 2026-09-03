@@ -30,7 +30,6 @@
 #pragma GCC diagnostic pop
 
 #define _Atomic(X) std::atomic<X>
-#define NUM_VDO_BUFFERS (8)
 
 /**
  * brief A type representing a provider of frames from VDO.
@@ -61,17 +60,14 @@ class ImageProvider
     void ReturnFrame(VdoBuffer &buffer);
 
   private:
-    bool AllocateVdoBuffers();
-    void ReleaseVdoBuffers();
     void RunLoopIteration();
 
     GQueue *delivered_frames_;
-    GQueue *processed_frames_;
     pthread_cond_t frame_deliver_cond_;
     pthread_mutex_t frame_mutex_;
     pthread_t fetcher_thread_;
     std::atomic_bool shutdown_;
     unsigned int num_frames_;
-    VdoBuffer *vdo_buffers_[NUM_VDO_BUFFERS];
+    int vdo_stream_fd_;
     VdoStream *vdo_stream_;
 };

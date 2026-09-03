@@ -20,6 +20,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <poll.h>
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <vdo-channel.h>
@@ -58,6 +59,7 @@ bool ImageProvider::ChooseStreamResolution(
     {
         LOG_E("%s: Failed vdo_channel_get(): %s", __func__, (error != nullptr) ? error->message : "N/A");
         g_clear_object(&channel);
+        return false;
     }
     const auto set = vdo_channel_get_resolutions(channel, nullptr, &error);
     g_clear_object(&channel);
@@ -66,7 +68,7 @@ bool ImageProvider::ChooseStreamResolution(
         LOG_E(
             "%s/%s: vdo_channel_get_resolutions() failed (%s)",
             __FILE__,
-            __FUNCTION__,
+            __func__,
             (error != nullptr) ? error->message : "N/A");
         return false;
     }
@@ -78,7 +80,7 @@ bool ImageProvider::ChooseStreamResolution(
     {
         const auto res = &set->resolutions[i];
         assert(nullptr != res);
-        LOG_I("%s/%s: resolution %zu: (%ux%u)", __FILE__, __FUNCTION__, i, res->width, res->height);
+        LOG_I("resolution %zu: (%ux%u)", i, res->width, res->height);
         if ((res->width >= req_width) && (res->height >= req_height))
         {
             const auto area = res->width * res->height;
@@ -94,17 +96,12 @@ bool ImageProvider::ChooseStreamResolution(
     // for creating the stream. If that info for some reason was empty we
     // fall back to trying to create a stream with client-supplied w/h.
     chosen_width = req_width;
-    chosen_width = req_height;
+    chosen_height = req_height;
     if (0 <= best_res_idx)
     {
         chosen_width = set->resolutions[best_res_idx].width;
         chosen_height = set->resolutions[best_res_idx].height;
-        LOG_I(
-            "%s/%s: We select stream %ux%u based on VDO channel info",
-            __FILE__,
-            __FUNCTION__,
-            chosen_width,
-            chosen_height);
+        LOG_I("✅ We select stream %ux%u based on VDO channel info", chosen_width, chosen_height);
     }
     else
     {
@@ -112,7 +109,7 @@ bool ImageProvider::ChooseStreamResolution(
             "%s/%s: VDO channel info contains no resolution info. Fallback to client-requested stream resolution "
             "%ux%u.",
             __FILE__,
-            __FUNCTION__,
+            __func__,
             chosen_width,
             chosen_height);
     }
@@ -136,6 +133,7 @@ bool ImageProvider::StartFrameFetch(ImageProvider &provider)
 bool ImageProvider::StopFrameFetch(ImageProvider &provider)
 {
     provider.shutdown_ = true;
+    vdo_stream_stop(provider.vdo_stream_);
 
     if (pthread_join(provider.fetcher_thread_, nullptr))
     {
@@ -149,27 +147,21 @@ bool ImageProvider::StopFrameFetch(ImageProvider &provider)
 /**
  * brief Starting point function for the thread fetching frames.
  *
- * Responsible for fetching buffers/frames from VDO and re-enqueue buffers back
+ * Responsible for fetching buffers/frames from VDO and releasing buffers back
  * to VDO when they are not needed by the application. The ImageProvider always
  * keeps one or several of the most recent frames available in the application.
- * There are two queues involved: delivered_frames and processed_frames.
- * - delivered_frames are frames delivered from VDO and
- *   not processed by the client.
- * - processed_frames are frames that the client has consumed and handed
- *   back to the ImageProvider.
+ * Frames returned by the client are immediately released back to VDO.
  * The thread works roughly like this:
  * 1. The thread blocks on vdo_stream_get_buffer() until VDO deliver a new
  * frame.
  * 2. The fresh frame is put at the end of the deliveredFrame queue. If the
  *    client want to fetch a frame the item at the end of deliveredFrame
  *    list is returned.
- * 3. If there are any frames in the processed_frames list one of these are
- *    enqueued back to VDO to keep the flow of buffers.
- * 4. If the processed_frames list is empty we instead check if there are
- *    frames available in the delivered_frames list. We want to make sure
+ * 3. The thread checks if there are frames available in the delivered_frames
+ *    list. We want to make sure
  *    there is at least numAppFrames buffers available to the client to
  *    fetch. If there are more than numAppFrames in delivered_frames we
- *    pick the first buffer (oldest) in the list and enqueue it to VDO.
+ *    pick the first buffer (oldest) in the list and release it to VDO.
 
  * param data Pointer to ImageProvider owning thread.
  * return Pointer to unused return data.
@@ -203,10 +195,10 @@ ImageProvider::ImageProvider(
     const unsigned int height,
     const unsigned int num_frames,
     const VdoFormat format)
-    : delivered_frames_(g_queue_new()), processed_frames_(g_queue_new()), shutdown_(false), num_frames_(num_frames)
+    : delivered_frames_(g_queue_new()), shutdown_(false), num_frames_(num_frames), vdo_stream_fd_(-1),
+      vdo_stream_(nullptr)
 {
     assert(nullptr != delivered_frames_);
-    assert(nullptr != processed_frames_);
 
     if (pthread_mutex_init(&frame_mutex_, nullptr))
     {
@@ -229,10 +221,8 @@ ImageProvider::ImageProvider(
     vdo_map_set_uint32(vdoMap, "format", format);
     vdo_map_set_uint32(vdoMap, "width", width);
     vdo_map_set_uint32(vdoMap, "height", height);
-    // We will use buffer_alloc() and buffer_unref() calls.
-    vdo_map_set_uint32(vdoMap, "buffer.strategy", VDO_BUFFER_STRATEGY_EXPLICIT);
 
-    LOG_I("Dump of vdo stream settings map =====");
+    LOG_I("===== Dump of vdo stream settings map =====");
     vdo_map_dump(vdoMap);
 
     vdo_stream_ = vdo_stream_new(vdoMap, nullptr, &error);
@@ -243,10 +233,11 @@ ImageProvider::ImageProvider(
         assert(false);
     }
 
-    if (!AllocateVdoBuffers())
+    vdo_stream_fd_ = vdo_stream_get_fd(vdo_stream_, &error);
+    if (0 > vdo_stream_fd_)
     {
-        LOG_E("%s: Failed setting up VDO buffers!", __func__);
-        ReleaseVdoBuffers();
+        LOG_E(
+            "%s: Failed getting VDO stream file descriptor: %s", __func__, (nullptr != error) ? error->message : "N/A");
         assert(false);
     }
 
@@ -254,25 +245,23 @@ ImageProvider::ImageProvider(
     if (!vdo_stream_start(vdo_stream_, &error))
     {
         LOG_E("%s: Failed starting stream: %s", __func__, (error != nullptr) ? error->message : "N/A");
-        ReleaseVdoBuffers();
         assert(false);
     }
 }
 
 ImageProvider::~ImageProvider()
 {
-    ReleaseVdoBuffers();
-
+    while (!g_queue_is_empty(delivered_frames_))
+    {
+        auto buffer = static_cast<VdoBuffer *>(g_queue_pop_head(delivered_frames_));
+        vdo_stream_buffer_unref(vdo_stream_, &buffer, nullptr);
+    }
     pthread_mutex_destroy(&frame_mutex_);
     pthread_cond_destroy(&frame_deliver_cond_);
 
     if (nullptr != delivered_frames_)
     {
         g_queue_free(delivered_frames_);
-    }
-    if (nullptr != processed_frames_)
-    {
-        g_queue_free(processed_frames_);
     }
 }
 
@@ -305,80 +294,41 @@ error_exit:
 
 void ImageProvider::ReturnFrame(VdoBuffer &buffer)
 {
-    pthread_mutex_lock(&frame_mutex_);
-
-    g_queue_push_tail(processed_frames_, &buffer);
-
-    pthread_mutex_unlock(&frame_mutex_);
-}
-
-bool ImageProvider::AllocateVdoBuffers()
-{
     g_autoptr(GError) error = nullptr;
-
-    for (size_t i = 0; NUM_VDO_BUFFERS > i; i++)
+    auto buffer_ptr = &buffer;
+    if (!vdo_stream_buffer_unref(vdo_stream_, &buffer_ptr, &error))
     {
-        vdo_buffers_[i] = vdo_stream_buffer_alloc(vdo_stream_, nullptr, &error);
-        if (vdo_buffers_[i] == nullptr)
-        {
-            LOG_E(
-                "%s/%s: Failed creating VDO buffer: %s",
-                __FILE__,
-                __FUNCTION__,
-                (error != nullptr) ? error->message : "N/A");
-            return false;
-        }
-
-        // Make a 'speculative' vdo_buffer_get_data() call to trigger a
-        // memory mapping of the buffer. The mapping is cached in the VDO
-        // implementation.
-        const auto dummy_ptr = vdo_buffer_get_data(vdo_buffers_[i]);
-        if (nullptr == dummy_ptr)
-        {
-            LOG_E(
-                "%s/%s: Failed initializing buffer memmap: %s",
-                __FILE__,
-                __FUNCTION__,
-                (error != nullptr) ? error->message : "N/A");
-            return false;
-        }
-
-        if (!vdo_stream_buffer_enqueue(vdo_stream_, vdo_buffers_[i], &error))
-        {
-            LOG_E("%s: Failed enqueue VDO buffer: %s", __func__, (error != nullptr) ? error->message : "N/A");
-            return false;
-        }
-    }
-
-    return true;
-}
-
-void ImageProvider::ReleaseVdoBuffers()
-{
-    if (nullptr == vdo_stream_)
-    {
-        return;
-    }
-
-    for (auto i = 0; i < NUM_VDO_BUFFERS; i++)
-    {
-        if (nullptr != vdo_buffers_[i])
-        {
-            vdo_stream_buffer_unref(vdo_stream_, &vdo_buffers_[i], nullptr);
-        }
+        LOG_E("%s: Failed releasing VDO buffer: %s", __func__, (error != nullptr) ? error->message : "N/A");
     }
 }
 
 void ImageProvider::RunLoopIteration()
 {
     g_autoptr(GError) error = nullptr;
-    // Block waiting for a frame from VDO
+    pollfd file_descriptor = {.fd = vdo_stream_fd_, .events = POLLIN, .revents = 0};
+    const auto poll_result = poll(&file_descriptor, 1, 100);
+    if (0 > poll_result)
+    {
+        if (EINTR != errno)
+        {
+            LOG_E("%s: Failed waiting for VDO frame: %s", __func__, strerror(errno));
+        }
+        return;
+    }
+    if (0 == poll_result || 0 == (file_descriptor.revents & POLLIN))
+    {
+        if (0 != (file_descriptor.revents & (POLLERR | POLLHUP | POLLNVAL)))
+        {
+            LOG_E("%s: VDO stream poll returned events 0x%x", __func__, file_descriptor.revents);
+        }
+        return;
+    }
+
     const auto new_buffer = vdo_stream_get_buffer(vdo_stream_, &error);
 
     if (nullptr == new_buffer)
     {
-        // Fail but we continue anyway hoping for the best.
-        LOG_I("%s: WARNING, failed fetching frame from vdo: %s", __func__, (error != nullptr) ? error->message : "N/A");
+        LOG_E("%s: Failed fetching frame from VDO: %s", __func__, (error != nullptr) ? error->message : "N/A");
         return;
     }
     pthread_mutex_lock(&frame_mutex_);
@@ -387,35 +337,25 @@ void ImageProvider::RunLoopIteration()
 
     VdoBuffer *old_buffer = nullptr;
 
-    // First check if there are any frames returned from app
-    // processing
-    if (g_queue_get_length(processed_frames_) > 0)
+    // Client specifies the number-of-recent-frames it needs to collect
+    // in one chunk (num_frames_). Thus only release buffers back to VDO
+    // if we have collected more buffers than num_frames_.
+    if (g_queue_get_length(delivered_frames_) > num_frames_)
     {
-        old_buffer = static_cast<VdoBuffer *>(g_queue_pop_head(processed_frames_));
-    }
-    else
-    {
-        // Client specifies the number-of-recent-frames it needs to collect
-        // in one chunk (num_frames_). Thus only enqueue buffers back to
-        // VDO if we have collected more buffers than num_frames_.
-        if (g_queue_get_length(delivered_frames_) > num_frames_)
-        {
-            old_buffer = static_cast<VdoBuffer *>(g_queue_pop_head(delivered_frames_));
-        }
+        old_buffer = static_cast<VdoBuffer *>(g_queue_pop_head(delivered_frames_));
     }
 
     if (old_buffer)
     {
-        if (!vdo_stream_buffer_enqueue(vdo_stream_, old_buffer, &error))
+        if (!vdo_stream_buffer_unref(vdo_stream_, &old_buffer, &error))
         {
             // Fail but we continue anyway hoping for the best.
             LOG_I(
-                "%s: WARNING, failed enqueueing buffer to vdo: %s",
+                "%s: WARNING, failed releasing buffer to vdo: %s",
                 __func__,
                 (error != nullptr) ? error->message : "N/A");
         }
     }
-    g_object_unref(new_buffer); // Release the ref from vdo_stream_get_buffer
     pthread_cond_signal(&frame_deliver_cond_);
     pthread_mutex_unlock(&frame_mutex_);
 }

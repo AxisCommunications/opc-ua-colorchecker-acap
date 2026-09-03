@@ -16,6 +16,7 @@
 
 #include <atomic>
 #include <axparameter.h>
+#include <csignal>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/video.hpp>
 #include <stdexcept>
@@ -43,6 +44,7 @@ static atomic<bool> pickcurrent(false);
 static atomic<bool> currentstate(false);
 
 static GMainLoop *loop = nullptr;
+static volatile sig_atomic_t shutdown_requested = 0;
 
 static GMutex mtx;
 
@@ -73,7 +75,7 @@ static void restart_opcuaserver(const guint32 port)
     }
     if (!opcuaserver.LaunchServer(port))
     {
-        LOG_E("%s/%s: Failed to launch OPC UA server", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed to launch OPC UA server", __FILE__, __func__);
         assert(false);
     }
     g_mutex_unlock(&mtx);
@@ -82,13 +84,18 @@ static void restart_opcuaserver(const guint32 port)
 static gboolean imageanalysis(gpointer data)
 {
     (void)data;
+    if (shutdown_requested)
+    {
+        g_main_loop_quit(loop);
+        return FALSE;
+    }
     assert(nullptr != paramhandler);
     // Get the latest NV12 image frame from VDO using the imageprovider
     assert(nullptr != provider);
     auto buf = provider->GetLastFrameBlocking();
     if (nullptr == buf)
     {
-        LOG_I("%s/%s: No more frames available, exiting", __FILE__, __FUNCTION__);
+        LOG_I("⏳ No more frames available, exiting (%s) ...", __func__);
         return TRUE;
     }
 
@@ -109,13 +116,13 @@ static gboolean imageanalysis(gpointer data)
         LOG_I(
             "%s/%s: Picked current average color: %.1f %.1f %.1f",
             __FILE__,
-            __FUNCTION__,
+            __func__,
             color.val[R],
             color.val[G],
             color.val[B]);
         if (!paramhandler->SetColor(color))
         {
-            LOG_E("%s/%s: Failed to set picked color", __FILE__, __FUNCTION__);
+            LOG_E("%s/%s: Failed to set picked color", __FILE__, __func__);
         }
         purge_colorarea();
         pickcurrent = false;
@@ -124,7 +131,7 @@ static gboolean imageanalysis(gpointer data)
     // Create color area if nonexistent
     if (nullptr == colorarea)
     {
-        LOG_I("%s/%s: Set up new colorarea", __FILE__, __FUNCTION__);
+        LOG_I("⏳ Setting up new colorarea ...");
         switch (paramhandler->GetMarkerShape())
         {
         case Ellipse:
@@ -164,6 +171,12 @@ static gboolean imageanalysis(gpointer data)
     // Release the VDO frame buffer
     provider->ReturnFrame(*buf);
 
+    if (shutdown_requested)
+    {
+        g_main_loop_quit(loop);
+        return FALSE;
+    }
+
     return TRUE;
 }
 
@@ -175,7 +188,7 @@ static gboolean initimageanalysis(const unsigned int w, const unsigned int h)
     unsigned int streamHeight = 0;
     if (!ImageProvider::ChooseStreamResolution(w, h, streamWidth, streamHeight))
     {
-        LOG_E("%s/%s: Failed choosing stream resolution", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed choosing stream resolution", __FILE__, __func__);
         return FALSE;
     }
 
@@ -184,22 +197,22 @@ static gboolean initimageanalysis(const unsigned int w, const unsigned int h)
     assert(nullptr != paramhandler);
     if (!paramhandler->SetResolution(streamWidth, streamHeight))
     {
-        LOG_E("%s/%s: Failed to update resolution", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed to update resolution", __FILE__, __func__);
         return FALSE;
     }
 
-    LOG_I("Creating VDO image provider and creating stream %d x %d", streamWidth, streamHeight);
+    LOG_I("⏳ Creating VDO image provider and creating stream %d x %d ...", streamWidth, streamHeight);
     provider = new ImageProvider(streamWidth, streamHeight, 2, VDO_FORMAT_YUV);
     if (nullptr == provider)
     {
-        LOG_E("%s/%s: Failed to create ImageProvider", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed to create ImageProvider", __FILE__, __func__);
         return FALSE;
     }
 
-    LOG_I("Start fetching video frames from VDO");
+    LOG_I("⏳ Start fetching video frames from VDO ...");
     if (!ImageProvider::StartFrameFetch(*provider))
     {
-        LOG_E("%s/%s: Failed to fetch frames from VDO", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed to fetch frames from VDO", __FILE__, __func__);
         return FALSE;
     }
 
@@ -233,11 +246,7 @@ static void signalHandler(int signal_num)
     case SIGTERM:
     case SIGABRT:
     case SIGINT:
-        if (nullptr != provider)
-        {
-            ImageProvider::StopFrameFetch(*provider);
-        }
-        g_main_loop_quit(loop);
+        shutdown_requested = 1;
         break;
     default:
         break;
@@ -282,11 +291,11 @@ int main(int argc, char *argv[])
     }
 
     // Init parameter handling (will also launch OPC UA server)
-    LOG_I("Init parameter handling ...");
+    LOG_I("⏳ Init parameter handling ...");
     paramhandler = new ParamHandler(app_name, purge_colorarea, restart_opcuaserver);
     if (nullptr == paramhandler)
     {
-        LOG_E("%s/%s: Failed to set up parameters", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed to set up parameters", __FILE__, __func__);
         result = EXIT_FAILURE;
         goto exit_param;
     }
@@ -294,7 +303,7 @@ int main(int argc, char *argv[])
     // Initialize image analysis
     if (!initimageanalysis(640, 360))
     {
-        LOG_E("%s/%s: Failed to init image analysis", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed to init image analysis", __FILE__, __func__);
         result = EXIT_FAILURE;
         goto exit_param;
     }
@@ -302,7 +311,7 @@ int main(int argc, char *argv[])
     // Add image analysis as idle function
     if (1 > g_idle_add(imageanalysis, nullptr))
     {
-        LOG_E("%s/%s: Failed to add idle function", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed to add idle function", __FILE__, __func__);
         result = EXIT_FAILURE;
         goto exit_param;
     }
@@ -311,23 +320,25 @@ int main(int argc, char *argv[])
     cgi_handler = new CgiHandler(get_color, get_color_area_value, pickcurrent_cb);
     if (nullptr == cgi_handler)
     {
-        LOG_E("%s/%s: Failed to set up CGI handler", __FILE__, __FUNCTION__);
+        LOG_E("%s/%s: Failed to set up CGI handler", __FILE__, __func__);
         result = EXIT_FAILURE;
         goto exit_param;
     }
 
-    LOG_I("Create and start main loop ...");
+    LOG_I("⏳ Create and start main loop ...");
     assert(nullptr == loop);
     loop = g_main_loop_new(nullptr, FALSE);
     g_main_loop_run(loop);
 
     // Cleanup
-    LOG_I("Shutdown ...");
+    LOG_I("⏳ Shutdown ...");
     delete cgi_handler;
     g_main_loop_unref(loop);
     if (nullptr != provider)
     {
+        ImageProvider::StopFrameFetch(*provider);
         delete provider;
+        provider = nullptr;
     }
     opcuaserver.ShutDownServer();
 
@@ -335,7 +346,7 @@ exit_param:
     delete paramhandler;
 
 exit:
-    LOG_I("Exiting!");
+    LOG_I("✅ Exiting!");
     closelog();
 
     return result;
