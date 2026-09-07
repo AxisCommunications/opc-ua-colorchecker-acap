@@ -7,7 +7,7 @@ applyTo: "**"
 
 ## Scope and architecture
 
-- This is an AXIS ACAP v4 native application.
+- This is an ACAP v4 native application.
 - Always write the official platform names as `AXIS OS` and `AXIS ACAP`.
 - It acquires an NV12 VDO frame, converts it to BGR with OpenCV, and evaluates a color area.
 - It publishes the boolean result through OPC UA, Axis events, and FastCGI endpoints.
@@ -65,7 +65,7 @@ When changing CGI behavior, keep these aligned:
 - The settings UI is static HTML and vanilla JavaScript, with no bundler or framework.
 - Preserve tab indentation in [`html/js/`](../html/js/) and the `fetch().then()` style for
   local flow changes.
-- [`Dockerfile`](../Dockerfile) cross-compiles for `aarch64` and `armv7hf` with the AXIS ACAP SDK.
+- [`Dockerfile`](../Dockerfile) cross-compiles for `aarch64` and `armv7hf` with the ACAP SDK.
 - Keep dependency versions and SHA256 values synchronized; Renovate manages those updates.
 - Do not edit generated root artifacts: `*.eap`, `*_LICENSE.txt`, `opcuacolorchecker`, `pa*.conf`.
 - Regenerate packages through the container build.
