@@ -32,7 +32,6 @@ ParamHandler::ParamHandler(const gchar *app_name, void (*PurgeColorArea)(), void
     assert(nullptr != RestartOpcUaServer_);
 
     LOG_I("⏳ Init parameter handling ...");
-    g_mutex_init(&mtx_);
     GError *error = nullptr;
     axparameter_ = ax_parameter_new(app_name, &error);
     if (nullptr != error)
@@ -74,26 +73,23 @@ ParamHandler::~ParamHandler()
 {
     assert(nullptr != axparameter_);
     ax_parameter_free(axparameter_);
-    g_mutex_clear(&mtx_);
 }
 
 gboolean ParamHandler::SetColor(const cv::Scalar color)
 {
-    g_mutex_lock(&mtx_);
+    lock_guard<mutex> lock(mtx_);
     color_ = color;
     const auto result = SetParam("ColorB", static_cast<gdouble>(color.val[B]), FALSE) &&
                         SetParam("ColorG", static_cast<gdouble>(color.val[G]), FALSE) &&
                         SetParam("ColorR", static_cast<gdouble>(color.val[R]), TRUE);
-    g_mutex_unlock(&mtx_);
 
     return result;
 }
 
 gboolean ParamHandler::SetResolution(const gint32 w, const gint32 h)
 {
-    g_mutex_lock(&mtx_);
+    lock_guard<mutex> lock(mtx_);
     const auto result = (SetParam("Width", w, FALSE) && SetParam("Height", h, TRUE));
-    g_mutex_unlock(&mtx_);
 
     return result;
 }
@@ -218,26 +214,28 @@ gboolean ParamHandler::GetParam(const gchar *name, gint32 &val) const
 
 void ParamHandler::UpdateLocalParam(const gchar *name, const gdouble val)
 {
-    g_mutex_lock(&mtx_);
-    if (0 == strcmp("ColorR", name))
     {
-        color_.val[R] = val;
+        lock_guard<mutex> lock(mtx_);
+        if (0 == strcmp("ColorR", name))
+        {
+            color_.val[R] = val;
+        }
+        else if (0 == strcmp("ColorG", name))
+        {
+            color_.val[G] = val;
+        }
+        else if (0 == strcmp("ColorB", name))
+        {
+            color_.val[B] = val;
+        }
+        else
+        {
+            LOG_E("%s/%s: FAILED to act on param %s", __FILE__, __func__, name);
+            throw runtime_error("Unknown double parameter.");
+        }
     }
-    else if (0 == strcmp("ColorG", name))
-    {
-        color_.val[G] = val;
-    }
-    else if (0 == strcmp("ColorB", name))
-    {
-        color_.val[B] = val;
-    }
-    else
-    {
-        LOG_E("%s/%s: FAILED to act on param %s", __FILE__, __func__, name);
-        throw runtime_error("Unknown double parameter.");
-    }
+
     PurgeColorArea_();
-    g_mutex_unlock(&mtx_);
 }
 
 void ParamHandler::UpdateLocalParam(const gchar *name, const gint32 val)
@@ -255,40 +253,41 @@ void ParamHandler::UpdateLocalParam(const gchar *name, const gint32 val)
         return;
     }
 
-    // The following parameters trigger recalibration of the color area
-    g_mutex_lock(&mtx_);
-    if (0 == strcmp("CenterX", name))
     {
-        center_point_.x = val;
-    }
-    else if (0 == strcmp("CenterY", name))
-    {
-        center_point_.y = val;
-    }
-    else if (0 == strcmp("MarkerWidth", name))
-    {
-        markerwidth_ = val;
-    }
-    else if (0 == strcmp("MarkerHeight", name))
-    {
-        markerheight_ = val;
-    }
-    else if (0 == strcmp("MarkerShape", name))
-    {
-        markershape_ = val;
-    }
-    else if (0 == strcmp("Tolerance", name))
-    {
-        tolerance_ = val;
-    }
-    else
-    {
-        LOG_E("%s/%s: FAILED to act on param %s", __FILE__, __func__, name);
-        throw runtime_error("Unknown int parameter.");
+        // The following parameters trigger recalibration of the color area
+        lock_guard<mutex> lock(mtx_);
+        if (0 == strcmp("CenterX", name))
+        {
+            center_point_.x = val;
+        }
+        else if (0 == strcmp("CenterY", name))
+        {
+            center_point_.y = val;
+        }
+        else if (0 == strcmp("MarkerWidth", name))
+        {
+            markerwidth_ = val;
+        }
+        else if (0 == strcmp("MarkerHeight", name))
+        {
+            markerheight_ = val;
+        }
+        else if (0 == strcmp("MarkerShape", name))
+        {
+            markershape_ = val;
+        }
+        else if (0 == strcmp("Tolerance", name))
+        {
+            tolerance_ = val;
+        }
+        else
+        {
+            LOG_E("%s/%s: FAILED to act on param %s", __FILE__, __func__, name);
+            throw runtime_error("Unknown int parameter.");
+        }
     }
 
     PurgeColorArea_();
-    g_mutex_unlock(&mtx_);
 }
 
 gboolean ParamHandler::SetupParam(const gchar *name, AXParameterCallback callbackfn)
