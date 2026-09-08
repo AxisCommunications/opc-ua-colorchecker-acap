@@ -17,6 +17,7 @@
 #include <atomic>
 #include <axparameter.h>
 #include <csignal>
+#include <memory>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/video.hpp>
 #include <stdexcept>
@@ -48,7 +49,7 @@ static volatile sig_atomic_t shutdown_requested = 0;
 
 static GMutex mtx;
 
-static EventHandler evhandler;
+static EventHandler *evhandler_ = nullptr;
 static ColorArea *colorarea = nullptr;
 static OpcUaServer opcuaserver;
 static ParamHandler *paramhandler = nullptr;
@@ -103,6 +104,13 @@ static gboolean imageanalysis(gpointer data)
     // This specific Mat is used as it is the one we created for NV12,
     // which has a different layout than e.g., BGR.
     g_mutex_lock(&mtx);
+    if (shutdown_requested)
+    {
+        g_mutex_unlock(&mtx);
+        provider->ReturnFrame(*buf);
+        g_main_loop_quit(loop);
+        return FALSE;
+    }
     nv12_mat.data = static_cast<uint8_t *>(vdo_buffer_get_data(buf));
 
     // Convert the NV12 data to BRG
@@ -163,7 +171,8 @@ static gboolean imageanalysis(gpointer data)
     if (newstate != currentstate)
     {
         // Trigger Axis event for state change
-        evhandler.Send(newstate);
+        assert(nullptr != evhandler_);
+        evhandler_->Send(newstate);
         currentstate = newstate;
     }
     g_mutex_unlock(&mtx);
@@ -241,6 +250,7 @@ static gboolean pickcurrent_cb()
 
 static void signalHandler(int signal_num)
 {
+    LOG_I("🛑 %s", strsignal(signal_num));
     switch (signal_num)
     {
     case SIGTERM:
@@ -260,7 +270,7 @@ static bool initializeSignalHandler(void)
 
     if (-1 == sigemptyset(&sa.sa_mask))
     {
-        LOG_E("Failed to initialize signal handler (%s)", strerror(errno));
+        LOG_E("%s/%s: Failed to initialize signal handler (%s)", __FILE__, __func__, strerror(errno));
         return false;
     }
 
@@ -268,7 +278,7 @@ static bool initializeSignalHandler(void)
 
     if (0 > sigaction(SIGTERM, &sa, NULL) || 0 > sigaction(SIGABRT, &sa, NULL) || 0 > sigaction(SIGINT, &sa, NULL))
     {
-        LOG_E("Failed to install signal handler (%s)", strerror(errno));
+        LOG_E("%s/%s: Failed to install signal handler (%s)", __FILE__, __func__, strerror(errno));
         return false;
     }
 
@@ -280,6 +290,7 @@ int main(int argc, char *argv[])
     (void)argc;
 
     CgiHandler *cgi_handler = nullptr;
+    unique_ptr<EventHandler> event_handler;
     const auto app_name = basename(argv[0]);
     openlog(app_name, LOG_PID | LOG_CONS, LOG_USER);
 
@@ -291,6 +302,8 @@ int main(int argc, char *argv[])
     }
 
     // Init parameter handling (will also launch OPC UA server)
+    event_handler = make_unique<EventHandler>();
+    evhandler_ = event_handler.get();
     LOG_I("⏳ Init parameter handling ...");
     paramhandler = new ParamHandler(app_name, purge_colorarea, restart_opcuaserver);
     if (nullptr == paramhandler)
@@ -325,13 +338,13 @@ int main(int argc, char *argv[])
         goto exit_param;
     }
 
-    LOG_I("⏳ Create and start main loop ...");
+    LOG_I("🧹 Create and start main loop ...");
     assert(nullptr == loop);
     loop = g_main_loop_new(nullptr, FALSE);
     g_main_loop_run(loop);
 
     // Cleanup
-    LOG_I("⏳ Shutdown ...");
+    LOG_I("🧹 Shutdown ...");
     delete cgi_handler;
     g_main_loop_unref(loop);
     if (nullptr != provider)
@@ -346,6 +359,8 @@ exit_param:
     delete paramhandler;
 
 exit:
+    evhandler_ = nullptr;
+    event_handler.reset();
     LOG_I("✅ Exiting!");
     closelog();
 

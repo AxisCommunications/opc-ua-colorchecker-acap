@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <fcgi_stdio.h>
 #include <glib.h>
 #pragma GCC diagnostic push
@@ -41,7 +42,7 @@ class CgiHandler
     gboolean (*PickCurrentCallback_)();
 
     FCGX_Request request_;
-    bool running_;
+    std::atomic_bool running_;
     int sock_;
     std::jthread worker_;
 };

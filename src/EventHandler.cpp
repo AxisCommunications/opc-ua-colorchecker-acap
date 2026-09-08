@@ -90,10 +90,10 @@ EventHandler::~EventHandler()
     assert(nullptr != event_handler_);
     assert(0 != event_id_);
 
-    LOG_I("⏳ Undeclare event ...");
+    LOG_I("🧹 Undeclare event ...");
     ax_event_handler_undeclare(event_handler_, event_id_, nullptr);
 
-    LOG_I("⏳ Free eventhandler ...");
+    LOG_I("🧹 Free eventhandler ...");
     ax_event_handler_free(event_handler_);
 }
 
