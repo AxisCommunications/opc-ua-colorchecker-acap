@@ -15,6 +15,7 @@
  */
 
 #include <assert.h>
+#include <utility>
 
 #include "OpcUaServer.hpp"
 #include "common.hpp"
@@ -25,17 +26,20 @@ using namespace std;
 #define REFRESH_INTERVAL_MS 1000
 
 OpcUaServer::OpcUaServer()
-    : colorareavalue_(false), lastupdate_(chrono::steady_clock::time_point{}), serverthread_(nullptr), running_(false),
-      server_(nullptr)
+    : serverthread_(nullptr), running_(false), server_(nullptr), colorareavalue_(false), colorareavaluepending_(false),
+      lastupdate_(chrono::steady_clock::time_point{})
 {
 }
 
 OpcUaServer::~OpcUaServer()
 {
+    ShutDownServer();
 }
 
 bool OpcUaServer::LaunchServer(const unsigned int serverport)
 {
+    lock_guard<mutex> lock(mtx_);
+
     assert(nullptr == server_);
     assert(nullptr == serverthread_);
     assert(!running_);
@@ -49,9 +53,21 @@ bool OpcUaServer::LaunchServer(const unsigned int serverport)
         LOG_E("%s/%s: Failed to create new UA_Server", __FILE__, __func__);
         return false;
     }
-    UA_ServerConfig_setMinimal(UA_Server_getConfig(server_), serverport, nullptr);
+    const auto config_status = UA_ServerConfig_setMinimal(UA_Server_getConfig(server_), serverport, nullptr);
+    if (UA_STATUSCODE_GOOD != config_status)
+    {
+        LOG_E(
+            "%s/%s: Failed configuring UA server on port %u (%s)",
+            __FILE__,
+            __func__,
+            serverport,
+            UA_StatusCode_name(config_status));
+        UA_Server_delete(exchange(server_, nullptr));
+        return false;
+    }
     AddBoolean(LABEL, false);
 
+    running_ = true;
     serverthread_ = new thread(this->RunUaServer, this);
 
     LOG_I("✅ UA server configured for port %u", serverport);
@@ -61,45 +77,34 @@ bool OpcUaServer::LaunchServer(const unsigned int serverport)
 
 void OpcUaServer::ShutDownServer()
 {
-    assert(running_);
-    assert(nullptr != serverthread_);
+    thread *serverthread = nullptr;
+    {
+        lock_guard<mutex> lock(mtx_);
+        serverthread = exchange(serverthread_, nullptr);
+        if (nullptr == serverthread)
+        {
+            return;
+        }
+        running_ = false;
+    }
 
     LOG_I("🧹 Request OPC UA server thread stop ...");
-    running_ = false;
-    if (nullptr != serverthread_)
+    if (serverthread->joinable())
     {
-        if (serverthread_->joinable())
-        {
-            serverthread_->join();
-        }
-        delete serverthread_;
-        serverthread_ = nullptr;
+        serverthread->join();
     }
-    assert(nullptr == server_);
-    LOG_I("✅ OPC UA server thread stopped");
+    delete serverthread;
+    LOG_I("✅ OPC UA server has been shut down");
 }
 
 bool OpcUaServer::IsRunning() const
 {
-    if (running_)
-    {
-        assert(nullptr != server_);
-        assert(nullptr != serverthread_);
-    }
-    else
-    {
-        assert(nullptr == server_);
-        assert(nullptr == serverthread_);
-    }
+    lock_guard<mutex> lock(mtx_);
     return running_;
 }
 
 void OpcUaServer::UpdateColorAreaValue(bool value)
 {
-    if (nullptr == server_)
-    {
-        return;
-    }
     // Even if there is no change, update every REFRESH_INTERVAL_MS millisecond(s);
     // that will bump the timestamp on the server so the client can see if the
     // value is fresh or ancient.
@@ -108,41 +113,33 @@ void OpcUaServer::UpdateColorAreaValue(bool value)
     const auto elapsedtime = now - lastupdate_;
     if (colorareavalue_ != value || chrono::milliseconds(REFRESH_INTERVAL_MS) <= elapsedtime)
     {
-        UA_Variant newvalue;
-        UA_Variant_setScalar(&newvalue, &value, &UA_TYPES[UA_TYPES_BOOLEAN]);
-        UA_NodeId currentNodeId = UA_NODEID_STRING(1, LABEL);
-        const auto rc = UA_Server_writeValue(server_, currentNodeId, newvalue);
-        if (UA_STATUSCODE_GOOD != rc)
-        {
-            LOG_E("%s/%s: Failed to set OPC UA color area value (%s)", __FILE__, __func__, UA_StatusCode_name(rc));
-        }
-        else
-        {
-            LOG_D("%s/%s: Color area value set to: %s", __FILE__, __func__, value ? "TRUE" : "FALSE");
-        }
         colorareavalue_ = value;
-        lastupdate_ = now;
+        colorareavaluepending_ = true;
     }
 }
 
 bool OpcUaServer::GetColorAreaValue()
 {
+    lock_guard<mutex> lock(mtx_);
+    return colorareavalue_;
+}
+
+void OpcUaServer::WriteColorAreaValue(bool value)
+{
     assert(nullptr != server_);
 
+    UA_Variant newvalue;
+    UA_Variant_setScalar(&newvalue, &value, &UA_TYPES[UA_TYPES_BOOLEAN]);
     UA_NodeId currentNodeId = UA_NODEID_STRING(1, LABEL);
-
-    UA_Variant value;
-    UA_Variant_init(&value);
-    const auto rc = UA_Server_readValue(server_, currentNodeId, &value);
-
-    assert(rc == UA_STATUSCODE_GOOD);
-    assert(UA_Variant_isScalar(&value));
-    assert(UA_Variant_hasScalarType(&value, &UA_TYPES[UA_TYPES_BOOLEAN]));
-
-    bool boolval = *(static_cast<bool *>(value.data));
-    UA_Variant_clear(&value);
-
-    return boolval;
+    const auto rc = UA_Server_writeValue(server_, currentNodeId, newvalue);
+    if (UA_STATUSCODE_GOOD != rc)
+    {
+        LOG_E("%s/%s: Failed to set OPC UA color area value (%s)", __FILE__, __func__, UA_StatusCode_name(rc));
+    }
+    else
+    {
+        LOG_D("%s/%s: Color area value set to: %s", __FILE__, __func__, value ? "TRUE" : "FALSE");
+    }
 }
 
 void OpcUaServer::AddBoolean(char *label, UA_Boolean value)
@@ -180,14 +177,38 @@ void OpcUaServer::AddBoolean(char *label, UA_Boolean value)
 void OpcUaServer::RunUaServer(OpcUaServer *parent)
 {
     assert(nullptr != parent);
-    assert(nullptr != parent->server_);
-    assert(false == parent->running_);
 
     LOG_I("⏳ Starting UA server ...");
-    parent->running_ = true;
-    UA_StatusCode status = UA_Server_run(parent->server_, &parent->running_);
-    LOG_I("🚪 UA Server exit is '%s'", UA_StatusCode_name(status));
-    UA_Server_delete(parent->server_);
-    parent->server_ = nullptr;
+    auto status = UA_Server_run_startup(parent->server_);
+    while (UA_STATUSCODE_GOOD == status && parent->running_)
+    {
+        bool colorareavalue = false;
+        bool colorareavaluepending = false;
+        {
+            lock_guard<mutex> lock(parent->mtx_);
+            if (!parent->running_ || nullptr == parent->server_)
+            {
+                break;
+            }
+            colorareavalue = parent->colorareavalue_;
+            colorareavaluepending = exchange(parent->colorareavaluepending_, false);
+        }
+        if (colorareavaluepending)
+        {
+            parent->WriteColorAreaValue(colorareavalue);
+            lock_guard<mutex> lock(parent->mtx_);
+            parent->lastupdate_ = chrono::steady_clock::now();
+        }
+        UA_Server_run_iterate(parent->server_, true);
+    }
+    if (UA_STATUSCODE_GOOD == status)
+    {
+        status = UA_Server_run_shutdown(parent->server_);
+    }
+    LOG_I("🚪 UA Server exit status is '%s'", UA_StatusCode_name(status));
+
+    lock_guard<mutex> lock(parent->mtx_);
+    parent->running_ = false;
+    UA_Server_delete(exchange(parent->server_, nullptr));
     return;
 }

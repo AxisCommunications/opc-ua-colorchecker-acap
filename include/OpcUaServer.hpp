@@ -36,11 +36,13 @@ class OpcUaServer
   protected:
   private:
     void AddBoolean(char *label, UA_Boolean value);
+    void WriteColorAreaValue(bool value);
     static void RunUaServer(OpcUaServer *parent);
-    bool colorareavalue_;
-    std::chrono::steady_clock::time_point lastupdate_;
-    std::mutex mtx_;
     std::thread *serverthread_;
     UA_Boolean running_;
     UA_Server *server_;
+    bool colorareavalue_;
+    bool colorareavaluepending_;
+    std::chrono::steady_clock::time_point lastupdate_;
+    mutable std::mutex mtx_;
 };
