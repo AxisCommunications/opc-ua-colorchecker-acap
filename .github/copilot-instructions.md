@@ -49,8 +49,8 @@ When changing CGI behavior, keep these aligned:
 - Follow [`.clang-format`](../.clang-format): LLVM, Allman braces, 4 spaces, 120 columns,
   no packed parameters.
 - New C++ headers/sources use the existing Apache-2.0 Axis header; headers use `#pragma once`.
-- Use PascalCase methods, trailing member underscores, GLib types at GLib boundaries, and
-  established Yoda-style null/value comparisons.
+- Use PascalCase methods, trailing underscores for member and file-scope variables, GLib types at GLib boundaries,
+  and established Yoda-style null/value comparisons.
 - Use `LOG_I`, `LOG_E`, and `LOG_D` from [`include/common.hpp`](../include/common.hpp) for messages.
 - Follow the existing `__FILE__/__FUNCTION__` context pattern for failures.
 - `LOG_D` is compiled out unless `DEBUG_WRITE` is enabled.
@@ -59,6 +59,9 @@ When changing CGI behavior, keep these aligned:
 - Scope third-party GCC diagnostic suppression narrowly with the established push/pop pattern.
 - Always set `const` on anything that can be `const`.
 - Use `auto` extensively, but not when keeping the type explicit is more readable.
+- Prefer direct expressions and local ownership handling when they are clear. Add a helper function
+  or intermediate variable only when it removes meaningful duplication, enforces an invariant, or
+  materially improves readability; do not add wrappers that only relocate a few lines of code.
 
 ## UI and packaging
 

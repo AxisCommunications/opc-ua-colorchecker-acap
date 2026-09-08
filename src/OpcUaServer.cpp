@@ -64,7 +64,7 @@ void OpcUaServer::ShutDownServer()
     assert(running_);
     assert(nullptr != serverthread_);
 
-    LOG_I("⏳ Shutting down UA server ...");
+    LOG_I("🧹 Request OPC UA server thread stop ...");
     running_ = false;
     if (nullptr != serverthread_)
     {
@@ -76,7 +76,7 @@ void OpcUaServer::ShutDownServer()
         serverthread_ = nullptr;
     }
     assert(nullptr == server_);
-    LOG_I("✅ UA server has been shut down");
+    LOG_I("✅ OPC UA server thread stopped");
 }
 
 bool OpcUaServer::IsRunning() const
@@ -186,7 +186,7 @@ void OpcUaServer::RunUaServer(OpcUaServer *parent)
     LOG_I("⏳ Starting UA server ...");
     parent->running_ = true;
     UA_StatusCode status = UA_Server_run(parent->server_, &parent->running_);
-    LOG_I("UA Server exit status: %s", UA_StatusCode_name(status));
+    LOG_I("🚪 UA Server exit is '%s'", UA_StatusCode_name(status));
     UA_Server_delete(parent->server_);
     parent->server_ = nullptr;
     return;

@@ -67,9 +67,9 @@ CgiHandler::CgiHandler(cv::Scalar (*GetColor)(), gboolean (*GetColorAreaValue)()
 CgiHandler::~CgiHandler()
 {
     // std::jthread automatically joins, so we only need to set running_ to false
-    LOG_I("⏳ Stop CGI handling ...");
+    LOG_I("🧹 Stop CGI handling ...");
     running_ = false;
-    LOG_I("⏳ Shutting down FastCGI ...");
+    LOG_I("🧹 Shutting down FastCGI ...");
     close(sock_);
 }
 
