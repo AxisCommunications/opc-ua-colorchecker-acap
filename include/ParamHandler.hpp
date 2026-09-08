@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <mutex>
+
 #include <axparameter.h>
 #include <opencv2/core/core.hpp>
 
@@ -32,26 +34,32 @@ class ParamHandler
 
     cv::Point GetCenterPoint() const
     {
+        std::lock_guard<std::mutex> lock(mtx_);
         return center_point_;
     };
     cv::Scalar GetColor() const
     {
+        std::lock_guard<std::mutex> lock(mtx_);
         return color_;
     };
     guint32 GetMarkerWidth() const
     {
+        std::lock_guard<std::mutex> lock(mtx_);
         return markerwidth_;
     };
     guint32 GetMarkerHeight() const
     {
+        std::lock_guard<std::mutex> lock(mtx_);
         return markerheight_;
     };
     guint8 GetMarkerShape() const
     {
+        std::lock_guard<std::mutex> lock(mtx_);
         return markershape_;
     };
     guint8 GetTolerance() const
     {
+        std::lock_guard<std::mutex> lock(mtx_);
         return tolerance_;
     };
 
@@ -78,5 +86,5 @@ class ParamHandler
     guint32 markerheight_;
     guint8 markershape_;
     guint8 tolerance_;
-    mutable GMutex mtx_;
+    mutable std::mutex mtx_;
 };
