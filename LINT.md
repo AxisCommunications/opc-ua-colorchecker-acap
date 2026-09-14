@@ -52,8 +52,20 @@ hadolint $(find -type f -name Dockerfile\*)
 # Lint Dockerfile files (alternative command)
 find -type f -name Dockerfile\* -exec hadolint {} +
 
+# Lint HTML files
+htmlhint html
+
+# Format-check HTML files
+prettier --check html
+
+# Lint JavaScript files
+eslint --config /action/lib/.automation/eslint.config.mjs html/js
+
+# Format-check JavaScript files
+prettier --check html/js
+
 # Lint JSON files
-eslint --no-eslintrc -c /action/lib/.automation/.eslintrc.yml --ext .json .
+eslint --config /action/lib/.automation/eslint.config.mjs --ext .json .
 
 # Lint Markdown files
 markdownlint .

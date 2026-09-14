@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-const paramappname = 'Opcuacolorchecker';
-const parambaseurl = '/axis-cgi/param.cgi?action=';
+const paramappname = "Opcuacolorchecker";
+const parambaseurl = "/axis-cgi/param.cgi?action=";
 const paramgeturl = `${parambaseurl}list&group=${paramappname}.`;
 const paramseturl = `${parambaseurl}update&${paramappname}.`;
 const appbaseurl = `/local/${paramappname.toLowerCase()}/`;
@@ -25,38 +25,40 @@ const pickcurrenturl = `${appbaseurl}pickcurrent.cgi`;
 
 const Shape = {
 	Ellipse: 0,
-	Rectangle: 1
-}
+	Rectangle: 1,
+};
 
 var center = {
 	X: 0,
-	Y: 0
+	Y: 0,
 };
 
 function setStatus(status) {
-	var statustext = document.getElementById('status');
+	var statustext = document.getElementById("status");
 	if (status) {
-		statustext.style.color = '#8dc63f';
-		statustext.innerHTML = '&checkmark;'
+		statustext.style.color = "#8dc63f";
+		statustext.innerHTML = "&checkmark;";
 	} else {
-		statustext.style.color = '#ff0033';
-		statustext.innerHTML = '&#10008;';
+		statustext.style.color = "#ff0033";
+		statustext.innerHTML = "&#10008;";
 	}
 }
 
 function updateStatus() {
 	fetch(getstatusurl)
-		.then(response => {
+		.then((response) => {
 			if (!response.ok) {
-				throw new Error(`Getting status, the network response was not ok: ${response.status} ${response.statusText}`);
+				throw new Error(
+					`Getting status, the network response was not ok: ${response.status} ${response.statusText}`,
+				);
 			}
 			return response.json();
 		})
-		.then(data => {
+		.then((data) => {
 			setStatus(data.status);
 			setTimeout(updateStatus, getstatusinterval);
 		})
-		.catch(error => {
+		.catch((error) => {
 			console.log(`FAILED to get status: ${error}`);
 			setTimeout(updateStatus, getstatusinterval);
 		});
@@ -67,8 +69,8 @@ function drawEllipseMarker(X, Y, color, lineWidth) {
 	ctx.strokeStyle = color;
 	ctx.lineWidth = lineWidth;
 
-	const w = document.getElementById('markerwidthnumbox').value / 2;
-	const h = document.getElementById('markerheightnumbox').value / 2;
+	const w = document.getElementById("markerwidthnumbox").value / 2;
+	const h = document.getElementById("markerheightnumbox").value / 2;
 	const k = 1.2;
 	const dxsize = (k * 2 * w) / 2;
 	const dysize = (k * 2 * h) / 2;
@@ -87,8 +89,8 @@ function drawRectangleMarker(X, Y, color, lineWidth) {
 	ctx.strokeStyle = color;
 	ctx.lineWidth = lineWidth;
 
-	const w = document.getElementById('markerwidthnumbox').value / 2;
-	const h = document.getElementById('markerheightnumbox').value / 2;
+	const w = document.getElementById("markerwidthnumbox").value / 2;
+	const h = document.getElementById("markerheightnumbox").value / 2;
 	const x1 = X - w;
 	const y1 = Y - h;
 	const x2 = X + w;
@@ -114,7 +116,7 @@ function drawRectangleMarker(X, Y, color, lineWidth) {
 }
 
 function drawMarker(X, Y, color, lineWidth) {
-	const val = parseInt(document.getElementById('markershape').value, 10);
+	const val = parseInt(document.getElementById("markershape").value, 10);
 	switch (val) {
 		case Shape.Ellipse:
 			drawEllipseMarker(X, Y, color, lineWidth);
@@ -129,13 +131,13 @@ function drawMarker(X, Y, color, lineWidth) {
 
 function drawCenter() {
 	ctx.clearRect(0, 0, draw.width, draw.height);
-	drawMarker(center.X, center.Y, '#ffffffaa', 3);
-	drawMarker(center.X, center.Y, '#000000', 1);
+	drawMarker(center.X, center.Y, "#ffffffaa", 3);
+	drawMarker(center.X, center.Y, "#000000", 1);
 }
 
 function updateWH(property, newvalue) {
-	var slider = document.getElementById(property.toLowerCase() + 'slider');
-	var numbox = document.getElementById(property.toLowerCase() + 'numbox');
+	var slider = document.getElementById(property.toLowerCase() + "slider");
+	var numbox = document.getElementById(property.toLowerCase() + "numbox");
 	slider.value = newvalue;
 	numbox.value = newvalue;
 	setParam(property, newvalue);
@@ -143,40 +145,40 @@ function updateWH(property, newvalue) {
 }
 
 function updateWidth(newvalue) {
-	updateWH('MarkerWidth', newvalue);
-	if (document.getElementById('markerlockaspect').checked) {
-		updateWH('MarkerHeight', newvalue);
+	updateWH("MarkerWidth", newvalue);
+	if (document.getElementById("markerlockaspect").checked) {
+		updateWH("MarkerHeight", newvalue);
 	}
 }
 
 function updateHeight(newvalue) {
-	updateWH('MarkerHeight', newvalue);
-	if (document.getElementById('markerlockaspect').checked) {
-		updateWH('MarkerWidth', newvalue);
+	updateWH("MarkerHeight", newvalue);
+	if (document.getElementById("markerlockaspect").checked) {
+		updateWH("MarkerWidth", newvalue);
 	}
 }
 
 function updateAspect(checked) {
-	const preview = document.getElementById('preview');
+	const preview = document.getElementById("preview");
 	const width = preview.width;
 	const height = preview.height;
 
 	const mwmax = checked ? Math.min(width, height) : width;
 	const mhmax = checked ? mwmax : height;
 
-	document.getElementById('markerwidthnumbox').max = mwmax;
-	document.getElementById('markerwidthslider').max = mwmax;
-	document.getElementById('markerheightnumbox').max = mhmax;
-	document.getElementById('markerheightslider').max = mhmax;
+	document.getElementById("markerwidthnumbox").max = mwmax;
+	document.getElementById("markerwidthslider").max = mwmax;
+	document.getElementById("markerheightnumbox").max = mhmax;
+	document.getElementById("markerheightslider").max = mhmax;
 
 	if (checked) {
-		var hval = document.getElementById('markerheightnumbox').value;
-		updateWH('MarkerWidth', hval);
+		var hval = document.getElementById("markerheightnumbox").value;
+		updateWH("MarkerWidth", hval);
 	}
 }
 
 function updateShape(newvalue) {
-	setParam('MarkerShape', newvalue);
+	setParam("MarkerShape", newvalue);
 	drawCenter();
 }
 
@@ -185,7 +187,7 @@ function trimColorComponent(colorcomponent) {
 		return 0;
 	}
 	if (255 < colorcomponent) {
-		return 255
+		return 255;
 	}
 	return colorcomponent;
 }
@@ -202,51 +204,53 @@ function getColorString(thecolor) {
 }
 
 function updateTolerance(tolerance, set = true) {
-	var slider = document.getElementById('toleranceslider');
-	var numbox = document.getElementById('tolerancenumbox');
+	var slider = document.getElementById("toleranceslider");
+	var numbox = document.getElementById("tolerancenumbox");
 	slider.value = tolerance;
 	numbox.value = tolerance;
 	if (set) {
-		setParam('Tolerance', tolerance);
+		setParam("Tolerance", tolerance);
 	}
-	var gradient = document.getElementById('intervalgradient');
+	var gradient = document.getElementById("intervalgradient");
 	const thecolor = {
-		R: document.getElementById('colR').value,
-		G: document.getElementById('colG').value,
-		B: document.getElementById('colB').value
+		R: document.getElementById("colR").value,
+		G: document.getElementById("colG").value,
+		B: document.getElementById("colB").value,
 	};
 	gradient.style.background = `linear-gradient(to right,${getEdgeColor(thecolor, -tolerance)},${getColorString(thecolor)},${getEdgeColor(thecolor, tolerance)})`;
 }
 
 function updateR(value) {
-	setParam('ColorR', value);
-	updateTolerance(document.getElementById('tolerancenumbox').value, false);
+	setParam("ColorR", value);
+	updateTolerance(document.getElementById("tolerancenumbox").value, false);
 }
 
 function updateG(value) {
-	setParam('ColorG', value);
-	updateTolerance(document.getElementById('tolerancenumbox').value, false);
+	setParam("ColorG", value);
+	updateTolerance(document.getElementById("tolerancenumbox").value, false);
 }
 
 function updateB(value) {
-	setParam('ColorB', value);
-	updateTolerance(document.getElementById('tolerancenumbox').value, false);
+	setParam("ColorB", value);
+	updateTolerance(document.getElementById("tolerancenumbox").value, false);
 }
 
 function getCurrentValue(param) {
 	return fetch(`${paramgeturl}${param}`)
-		.then(response => {
+		.then((response) => {
 			if (!response.ok) {
-				throw new Error(`Getting parameter value, the network response was not ok: ${response.status} ${response.statusText}`);
+				throw new Error(
+					`Getting parameter value, the network response was not ok: ${response.status} ${response.statusText}`,
+				);
 			}
 			return response.text();
 		})
-		.then(data => {
-			var value = data.split('=')[1];
+		.then((data) => {
+			var value = data.split("=")[1];
 			console.log(`Got ${param} value ${value}`);
 			return Number(value);
 		})
-		.catch(error => {
+		.catch((error) => {
 			alert(`FAILED to get ${param}`);
 			throw error;
 		});
@@ -254,52 +258,54 @@ function getCurrentValue(param) {
 
 function setParam(param, value) {
 	fetch(`${paramseturl}${param}=${value}`)
-		.then(response => {
+		.then((response) => {
 			if (!response.ok) {
-				throw new Error(`Setting parameter value, the network response was not ok: ${response.status} ${response.statusText}`);
+				throw new Error(
+					`Setting parameter value, the network response was not ok: ${response.status} ${response.statusText}`,
+				);
 			}
 			console.log(`Set ${param} to ${value}`);
 		})
-		.catch(error => {
+		.catch((error) => {
 			alert(`FAILED to set ${param}: ${error.message}`);
 		});
 }
 
 async function initWithCurrentValues() {
 	try {
-		center.X = await getCurrentValue('CenterX');
-		center.Y = await getCurrentValue('CenterY');
+		center.X = await getCurrentValue("CenterX");
+		center.Y = await getCurrentValue("CenterY");
 		var thecolor = {
-			R: await getCurrentValue('ColorR'),
-			G: await getCurrentValue('ColorG'),
-			B: await getCurrentValue('ColorB')
-		}
-		var markerwidth = await getCurrentValue('MarkerWidth');
-		var markerheight = await getCurrentValue('MarkerHeight');
-		var markershape = await getCurrentValue('MarkerShape');
-		var tolerance = await getCurrentValue('Tolerance');
-		var width = await getCurrentValue('Width');
-		var height = await getCurrentValue('Height');
+			R: await getCurrentValue("ColorR"),
+			G: await getCurrentValue("ColorG"),
+			B: await getCurrentValue("ColorB"),
+		};
+		var markerwidth = await getCurrentValue("MarkerWidth");
+		var markerheight = await getCurrentValue("MarkerHeight");
+		var markershape = await getCurrentValue("MarkerShape");
+		var tolerance = await getCurrentValue("Tolerance");
+		var width = await getCurrentValue("Width");
+		var height = await getCurrentValue("Height");
 	} catch (error) {
 		console.error(error);
 	}
 
-	var preview = document.getElementById('preview');
+	var preview = document.getElementById("preview");
 	preview.width = preview.style.width = draw.width = width;
 	preview.height = preview.style.height = draw.height = height;
 	preview.src = `/axis-cgi/mjpg/video.cgi?resolution=${width}x${height}`;
 
-	document.getElementById('colR').value = thecolor.R;
-	document.getElementById('colG').value = thecolor.G;
-	document.getElementById('colB').value = thecolor.B;
-	document.getElementById('markerwidthnumbox').value = markerwidth;
-	document.getElementById('markerwidthslider').value = markerwidth;
-	document.getElementById('markerheightnumbox').value = markerheight;
-	document.getElementById('markerheightslider').value = markerheight;
-	document.getElementById('markershape').value = markershape;
+	document.getElementById("colR").value = thecolor.R;
+	document.getElementById("colG").value = thecolor.G;
+	document.getElementById("colB").value = thecolor.B;
+	document.getElementById("markerwidthnumbox").value = markerwidth;
+	document.getElementById("markerwidthslider").value = markerwidth;
+	document.getElementById("markerheightnumbox").value = markerheight;
+	document.getElementById("markerheightslider").value = markerheight;
+	document.getElementById("markershape").value = markershape;
 
-	const markerlockaspect = (markerwidth == markerheight);
-	document.getElementById('markerlockaspect').checked = markerlockaspect;
+	const markerlockaspect = markerwidth == markerheight;
+	document.getElementById("markerlockaspect").checked = markerlockaspect;
 	updateAspect(markerlockaspect);
 	handleCoord(center.X, center.Y, false);
 	updateTolerance(tolerance, false);
@@ -309,15 +315,15 @@ function handleCoord(X, Y, set = true) {
 	center.X = X;
 	center.Y = Y;
 	if (set) {
-		setParam('CenterX', X);
-		setParam('CenterY', Y);
+		setParam("CenterX", X);
+		setParam("CenterY", Y);
 	}
 	ctx.clearRect(0, 0, draw.width, draw.height);
 	drawCenter();
 }
 
 function handleMouseClick(event) {
-	var offsets = document.getElementById('preview').getBoundingClientRect();
+	var offsets = document.getElementById("preview").getBoundingClientRect();
 	var top = offsets.top;
 	var left = offsets.left;
 	var X = Math.round(event.clientX - left);
@@ -327,25 +333,72 @@ function handleMouseClick(event) {
 
 function captureColor() {
 	fetch(pickcurrenturl)
-		.then(response => {
+		.then((response) => {
 			if (!response.ok) {
-				throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+				throw new Error(
+					`Network response was not ok: ${response.status} ${response.statusText}`,
+				);
 			}
 			return response.json();
 		})
-		.then(newColor => {
-			document.getElementById('colR').value = newColor.R;
-			document.getElementById('colG').value = newColor.G;
-			document.getElementById('colB').value = newColor.B;
-			updateTolerance(document.getElementById('tolerancenumbox').value, false);
+		.then((newColor) => {
+			document.getElementById("colR").value = newColor.R;
+			document.getElementById("colG").value = newColor.G;
+			document.getElementById("colB").value = newColor.B;
+			updateTolerance(
+				document.getElementById("tolerancenumbox").value,
+				false,
+			);
 		})
-		.catch(error => {
-			alert(`Failed to capture color; is the application running?\n(Error msg: ${error.message})`);
+		.catch((error) => {
+			alert(
+				`Failed to capture color; is the application running?\n(Error msg: ${error.message})`,
+			);
 		});
 }
 
-var draw = document.getElementById('draw');
-var ctx = draw.getContext('2d');
+var draw = document.getElementById("draw");
+var ctx = draw.getContext("2d");
+
+document
+	.getElementById("markerwidthslider")
+	.addEventListener("input", (event) => updateWidth(event.target.value));
+document
+	.getElementById("markerwidthnumbox")
+	.addEventListener("input", (event) => updateWidth(event.target.value));
+document
+	.getElementById("markerheightslider")
+	.addEventListener("input", (event) => updateHeight(event.target.value));
+document
+	.getElementById("markerheightnumbox")
+	.addEventListener("input", (event) => updateHeight(event.target.value));
+document
+	.getElementById("markershape")
+	.addEventListener("change", (event) => updateShape(event.target.value));
+document
+	.getElementById("markerlockaspect")
+	.addEventListener("change", (event) => updateAspect(event.target.checked));
+document
+	.getElementById("toleranceslider")
+	.addEventListener("input", (event) => updateTolerance(event.target.value));
+document
+	.getElementById("tolerancenumbox")
+	.addEventListener("input", (event) => updateTolerance(event.target.value));
+document
+	.getElementById("colR")
+	.addEventListener("input", (event) => updateR(event.target.value));
+document
+	.getElementById("colG")
+	.addEventListener("input", (event) => updateG(event.target.value));
+document
+	.getElementById("colB")
+	.addEventListener("input", (event) => updateB(event.target.value));
+document
+	.querySelector('button[type="button"]')
+	.addEventListener("click", captureColor);
+document
+	.getElementById("previewcontainer")
+	.addEventListener("click", handleMouseClick);
+
 initWithCurrentValues();
-document.getElementById('previewcontainer').addEventListener('click', handleMouseClick);
 updateStatus();

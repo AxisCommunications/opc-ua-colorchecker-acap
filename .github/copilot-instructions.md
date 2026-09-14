@@ -66,8 +66,10 @@ When changing CGI behavior, keep these aligned:
 ## UI and packaging
 
 - The settings UI is static HTML and vanilla JavaScript, with no bundler or framework.
-- Preserve tab indentation in [`html/js/`](../html/js/) and the `fetch().then()` style for
-  local flow changes.
+- Preserve tab indentation in [`html/js/`](../html/js/) and the `fetch().then()`
+  style for local flow changes.
+- Register settings UI handlers with `addEventListener` in `opcuacolorchecker.js`; do not use
+  inline HTML event attributes because ESLint cannot trace those function references.
 - [`Dockerfile`](../Dockerfile) cross-compiles for `aarch64` and `armv7hf` with the ACAP SDK.
 - Keep dependency versions and SHA256 values synchronized; Renovate manages those updates.
 - Do not edit generated root artifacts: `*.eap`, `*_LICENSE.txt`, `opcuacolorchecker`, `pa*.conf`.
